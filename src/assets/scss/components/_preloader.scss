@@ -1,0 +1,86 @@
+// Hoftrix branded loaders
+
+.preloader-progress-bar {
+  background: rgba(255, 255, 255, 0.06);
+  top: 0;
+  position: fixed;
+  z-index: 9999;
+  display: flex;
+  left: 0;
+  width: 100%;
+  padding: 0;
+
+  .progress-value {
+    animation: hoftrix-load-bar 500ms normal forwards;
+    box-shadow: 0 10px 40px -10px var(--hoftrix-orange, #ff4d00);
+    border-radius: 0 5px 5px 0;
+    background: var(--hoftrix-orange, #ff4d00);
+    top: 0;
+    height: 3px;
+    width: 100%;
+  }
+}
+
+@keyframes hoftrix-load-bar {
+  from { width: 0; }
+  to { width: 100%; }
+}
+
+.hoftrix-loader {
+  min-height: 220px;
+  width: 100%;
+  display: grid;
+  place-items: center;
+  padding: 2rem 1rem;
+}
+
+.hoftrix-loader-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.9rem;
+  text-align: center;
+}
+
+.hoftrix-loader-mark {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  background: rgba(255, 77, 0, 0.14);
+  border: 1px solid rgba(255, 77, 0, 0.35);
+  color: #ff4d00;
+  font-weight: 800;
+  font-size: 1.1rem;
+  letter-spacing: 0.02em;
+}
+
+.hoftrix-loader-spinner {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2.5px solid rgba(255, 255, 255, 0.12);
+  border-top-color: #ff4d00;
+  animation: hoftrix-spin 0.75s linear infinite;
+}
+
+.hoftrix-loader-text {
+  margin: 0;
+  color: #9ca3af;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+@keyframes hoftrix-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hoftrix-loader-spinner,
+  .preloader-progress-bar .progress-value {
+    animation: none;
+  }
+}

@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <title>Hoftrix CRM | Admin Dashboard</title>
+
+  <style>
+    html, body {
+      margin: 0;
+      background: #0b0f14;
+    }
+
+    #splash-screen {
+      position: fixed;
+      inset: 0;
+      z-index: 99999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background:
+        radial-gradient(900px 500px at 50% -10%, rgba(255, 77, 0, 0.18), transparent 55%),
+        #0b0f14;
+      opacity: 1;
+      visibility: visible;
+      transition: opacity 0.35s ease, visibility 0.35s ease;
+      font-family: Montserrat, system-ui, sans-serif;
+    }
+
+    #splash-screen.remove {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .splash-inner {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.25rem;
+      padding: 1.5rem;
+      text-align: center;
+    }
+
+    .splash-logo {
+      height: 36px;
+      max-width: min(220px, 70vw);
+      width: auto;
+      object-fit: contain;
+      filter: brightness(0) invert(1);
+      animation: splash-logo-in 0.5s ease both;
+    }
+
+    .splash-mark {
+      width: 52px;
+      height: 52px;
+      border-radius: 14px;
+      display: grid;
+      place-items: center;
+      background: rgba(255, 77, 0, 0.14);
+      border: 1px solid rgba(255, 77, 0, 0.35);
+      color: #ff4d00;
+      font-weight: 800;
+      font-size: 1.15rem;
+      letter-spacing: 0.02em;
+      animation: splash-logo-in 0.5s ease both;
+    }
+
+    .splash-spinner {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 2.5px solid rgba(255, 255, 255, 0.12);
+      border-top-color: #ff4d00;
+      animation: splash-spin 0.75s linear infinite;
+    }
+
+    .splash-text {
+      margin: 0;
+      color: #9ca3af;
+      font-size: 0.78rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    @keyframes splash-spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes splash-logo-in {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .splash-spinner,
+      .splash-logo,
+      .splash-mark {
+        animation: none;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="root"></div>
+  <div id="splash-screen" aria-busy="true" aria-live="polite">
+    <div class="splash-inner">
+      <img class="splash-logo" alt="Hoftrix" src="/logo-dark-full.svg" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'" />
+      <div class="splash-mark" style="display:none">H</div>
+      <div class="splash-spinner" role="status" aria-label="Loading"></div>
+      <p class="splash-text">Loading CRM</p>
+    </div>
+  </div>
+  <script type="module" src="/src/main"></script>
+  <script>
+    const rootEl = document.querySelector('#root')
+    const splash = document.querySelector('#splash-screen')
+    const hideSplash = () => splash?.classList.add('remove')
+    new MutationObserver((_m, obs) => {
+      if (rootEl && rootEl.childElementCount > 0) {
+        hideSplash()
+        obs.disconnect()
+      }
+    }).observe(rootEl, { childList: true })
+    // Safety: never leave splash stuck
+    window.addEventListener('load', () => setTimeout(hideSplash, 1200))
+  </script>
+</body>
+
+</html>

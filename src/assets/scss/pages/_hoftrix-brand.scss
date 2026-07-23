@@ -1,0 +1,868 @@
+//
+// Hoftrix CRM — dark SaaS theme
+// Primary #FF4D00 · Surfaces #0B0F14 / #111827 / #1F2937
+//
+
+:root {
+  --hoftrix-orange: #ff4d00;
+  --hoftrix-orange-soft: rgba(255, 77, 0, 0.14);
+  --hoftrix-bg: #0b0f14;
+  --hoftrix-surface: #111827;
+  --hoftrix-surface-2: #1f2937;
+  --hoftrix-border: rgba(255, 255, 255, 0.08);
+  --hoftrix-text: #f3f4f6;
+  --hoftrix-muted: #9ca3af;
+  --hoftrix-muted-2: #6b7280;
+}
+
+html[data-bs-theme='dark'],
+html {
+  color-scheme: dark;
+}
+
+body {
+  background-color: var(--hoftrix-bg) !important;
+  color: var(--hoftrix-text) !important;
+}
+
+// ——— Logo ———
+.hoftrix-logo-box {
+  .hoftrix-logo-link { text-decoration: none; }
+  .hoftrix-logo-img {
+    height: auto;
+    max-width: 100%;
+    object-fit: contain;
+    filter: brightness(0) invert(1);
+  }
+}
+
+.logo-box {
+  .logo-sm,
+  .logo-light,
+  .logo-dark img:first-child:not(.hoftrix-logo-img) {
+    display: none !important;
+  }
+}
+
+// ——— Shell layout ———
+.wrapper,
+.content-page,
+#page-content,
+.page-content {
+  background: var(--hoftrix-bg) !important;
+}
+
+.main-nav,
+.leftside-menu,
+.sidenav-menu {
+  background: var(--hoftrix-surface) !important;
+  border-right: 1px solid var(--hoftrix-border) !important;
+}
+
+.navbar-custom,
+.topbar,
+.navbar-header {
+  background: var(--hoftrix-surface) !important;
+  border-bottom: 1px solid var(--hoftrix-border) !important;
+  box-shadow: none !important;
+}
+
+.footer {
+  background: transparent !important;
+  color: var(--hoftrix-muted) !important;
+  border-top: 1px solid var(--hoftrix-border) !important;
+}
+
+// ——— Sidebar menu ———
+.side-nav,
+.navbar-nav {
+  .nav-link,
+  .side-nav-link,
+  a {
+    color: var(--hoftrix-muted) !important;
+    border-radius: 0.5rem;
+    transition: background 0.15s ease, color 0.15s ease;
+
+    &:hover {
+      color: var(--hoftrix-text) !important;
+      background: rgba(255, 255, 255, 0.04) !important;
+    }
+  }
+
+  .menuitem-active > a,
+  .active > a,
+  a.active,
+  .nav-link.active,
+  .side-nav-link.active {
+    color: #fff !important;
+    background: var(--hoftrix-orange-soft) !important;
+    box-shadow: inset 3px 0 0 var(--hoftrix-orange);
+  }
+}
+
+.menu-title,
+.side-nav-title {
+  color: var(--hoftrix-muted-2) !important;
+  letter-spacing: 0.06em;
+  font-size: 0.68rem !important;
+  font-weight: 700 !important;
+}
+
+// ——— Cards ———
+.card {
+  background: var(--hoftrix-surface) !important;
+  border: 1px solid var(--hoftrix-border) !important;
+  color: var(--hoftrix-text) !important;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.02), 0 8px 24px rgba(0, 0, 0, 0.25) !important;
+  border-radius: 0.85rem !important;
+  transition: border-color 0.2s ease, transform 0.2s ease;
+
+  &.crm-card-hover:hover {
+    border-color: rgba(255, 77, 0, 0.35) !important;
+    transform: translateY(-2px);
+  }
+}
+
+.card-header,
+.card-footer {
+  background: transparent !important;
+  border-color: var(--hoftrix-border) !important;
+  color: var(--hoftrix-text) !important;
+}
+
+// ——— Tables ———
+.table {
+  --bs-table-bg: transparent;
+  --bs-table-color: var(--hoftrix-text);
+  --bs-table-border-color: var(--hoftrix-border);
+  --bs-table-striped-bg: rgba(255, 255, 255, 0.02);
+  --bs-table-hover-bg: rgba(255, 77, 0, 0.06);
+  color: var(--hoftrix-text) !important;
+
+  thead th {
+    color: var(--hoftrix-muted) !important;
+    font-size: 0.72rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    border-bottom-color: var(--hoftrix-border) !important;
+    background: rgba(255, 255, 255, 0.02) !important;
+  }
+
+  td, th {
+    border-color: var(--hoftrix-border) !important;
+    vertical-align: middle;
+  }
+}
+
+// ——— Forms ———
+.form-control,
+.form-select,
+.input-group-text {
+  background: var(--hoftrix-surface-2) !important;
+  border-color: var(--hoftrix-border) !important;
+  color: var(--hoftrix-text) !important;
+
+  &:focus {
+    border-color: var(--hoftrix-orange) !important;
+    box-shadow: 0 0 0 0.2rem rgba(255, 77, 0, 0.18) !important;
+  }
+
+  &::placeholder {
+    color: var(--hoftrix-muted-2) !important;
+  }
+}
+
+.form-label {
+  color: var(--hoftrix-muted) !important;
+  font-weight: 600;
+  font-size: 0.78rem;
+}
+
+// ——— Buttons ———
+.btn-primary {
+  background: var(--hoftrix-orange) !important;
+  border-color: var(--hoftrix-orange) !important;
+  color: #fff !important;
+  font-weight: 600;
+
+  &:hover, &:focus {
+    background: #e64500 !important;
+    border-color: #e64500 !important;
+    box-shadow: 0 0 0 0.2rem rgba(255, 77, 0, 0.25) !important;
+  }
+}
+
+.btn-soft-primary {
+  background: var(--hoftrix-orange-soft) !important;
+  color: var(--hoftrix-orange) !important;
+  border: 1px solid transparent !important;
+}
+
+.btn-outline-secondary,
+.btn-light,
+.btn-soft-secondary {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border-color: var(--hoftrix-border) !important;
+  color: var(--hoftrix-text) !important;
+}
+
+// ——— Typography helpers ———
+.text-muted { color: var(--hoftrix-muted) !important; }
+.text-dark { color: var(--hoftrix-text) !important; }
+.bg-light { background: var(--hoftrix-surface-2) !important; }
+.bg-white { background: var(--hoftrix-surface) !important; }
+.border, .border-top, .border-bottom { border-color: var(--hoftrix-border) !important; }
+
+h1, h2, h3, h4, h5, h6,
+.h1, .h2, .h3, .h4, .h5, .h6 {
+  color: var(--hoftrix-text) !important;
+}
+
+.text-primary { color: var(--hoftrix-orange) !important; }
+.bg-primary { background-color: var(--hoftrix-orange) !important; }
+
+// ——— Modals / Dropdowns ———
+.modal-content {
+  background: var(--hoftrix-surface) !important;
+  border: 1px solid var(--hoftrix-border) !important;
+  color: var(--hoftrix-text) !important;
+}
+
+.modal-header,
+.modal-footer {
+  border-color: var(--hoftrix-border) !important;
+}
+
+.dropdown-menu {
+  background: var(--hoftrix-surface-2) !important;
+  border: 1px solid var(--hoftrix-border) !important;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45) !important;
+
+  .dropdown-item {
+    color: var(--hoftrix-text) !important;
+    &:hover {
+      background: var(--hoftrix-orange-soft) !important;
+      color: #fff !important;
+    }
+  }
+}
+
+// ——— Badges ———
+.badge.bg-soft-primary,
+.badge.bg-soft-info {
+  background: var(--hoftrix-orange-soft) !important;
+  color: var(--hoftrix-orange) !important;
+}
+
+// ——— Auth ———
+.authentication-bg {
+  background: radial-gradient(1200px 600px at 10% -10%, rgba(255, 77, 0, 0.18), transparent 55%),
+    radial-gradient(900px 500px at 90% 10%, rgba(31, 41, 55, 0.9), transparent 50%),
+    var(--hoftrix-bg) !important;
+  min-height: 100vh;
+}
+
+.hoftrix-auth-card {
+  max-width: 440px;
+  margin: 0 auto;
+  border-radius: 1rem !important;
+  border: 1px solid var(--hoftrix-border) !important;
+  background: var(--hoftrix-surface) !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45) !important;
+
+  &::before, &::after { display: none !important; }
+}
+
+.authentication-form {
+  .form-label { color: var(--hoftrix-muted) !important; }
+}
+
+// ——— CRM page primitives ———
+.crm-page {
+  padding: 1.5rem;
+}
+
+.crm-stat-card {
+  background: var(--hoftrix-surface);
+  border: 1px solid var(--hoftrix-border);
+  border-radius: 1rem;
+  padding: 1.25rem 1.35rem;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: auto -20% -40% auto;
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background: var(--hoftrix-orange-soft);
+    pointer-events: none;
+  }
+
+  .crm-stat-label {
+    color: var(--hoftrix-muted);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin-bottom: 0.35rem;
+  }
+
+  .crm-stat-value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #fff;
+    margin: 0;
+  }
+}
+
+.crm-empty {
+  text-align: center;
+  padding: 3.5rem 1.5rem;
+  color: var(--hoftrix-muted);
+
+  .crm-empty-icon {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 1rem;
+    border-radius: 1rem;
+    display: grid;
+    place-items: center;
+    background: var(--hoftrix-orange-soft);
+    color: var(--hoftrix-orange);
+    font-size: 1.75rem;
+  }
+}
+
+.crm-timeline {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+
+  li {
+    position: relative;
+    padding-left: 1.5rem;
+    padding-bottom: 1.25rem;
+    border-left: 2px solid var(--hoftrix-border);
+    margin-left: 0.5rem;
+
+    &::before {
+      content: '';
+      position: absolute;
+      left: -5px;
+      top: 0.35rem;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--hoftrix-orange);
+      box-shadow: 0 0 0 3px var(--hoftrix-orange-soft);
+    }
+
+    &:last-child {
+      border-left-color: transparent;
+      padding-bottom: 0;
+    }
+  }
+}
+
+.crm-tabs {
+  .nav-link {
+    color: var(--hoftrix-muted) !important;
+    border: none !important;
+    border-bottom: 2px solid transparent !important;
+    border-radius: 0 !important;
+    font-weight: 600;
+    padding: 0.85rem 1rem;
+
+    &.active {
+      color: #fff !important;
+      background: transparent !important;
+      border-bottom-color: var(--hoftrix-orange) !important;
+    }
+  }
+}
+
+.page-title-box,
+.page-title {
+  color: var(--hoftrix-text) !important;
+}
+
+// Soft button variants on dark
+.btn-soft-success { background: rgba(25, 135, 84, 0.15) !important; color: #3dd68c !important; }
+.btn-soft-danger { background: rgba(220, 53, 69, 0.15) !important; color: #ff6b7a !important; }
+.btn-soft-warning { background: rgba(255, 193, 7, 0.15) !important; color: #ffc107 !important; }
+.btn-soft-info { background: rgba(13, 202, 240, 0.12) !important; color: #4dd4f0 !important; }
+
+// FullCalendar dark
+.fc {
+  --fc-border-color: var(--hoftrix-border);
+  --fc-page-bg-color: transparent;
+  --fc-neutral-bg-color: var(--hoftrix-surface-2);
+  --fc-list-event-hover-bg-color: var(--hoftrix-orange-soft);
+  color: var(--hoftrix-text);
+
+  .fc-button-primary {
+    background: var(--hoftrix-surface-2) !important;
+    border-color: var(--hoftrix-border) !important;
+  }
+
+  .fc-button-primary:not(:disabled).fc-button-active,
+  .fc-button-primary:hover {
+    background: var(--hoftrix-orange) !important;
+    border-color: var(--hoftrix-orange) !important;
+  }
+}
+
+// Offcanvas / toast
+.offcanvas {
+  background: var(--hoftrix-surface) !important;
+  color: var(--hoftrix-text) !important;
+  border-color: var(--hoftrix-border) !important;
+}
+
+.page-content > .container-xxl > .p-4,
+.page-content > .container-xxl > [id$='-container'].p-4 {
+  @media (max-width: 767.98px) {
+    padding: 0.75rem !important;
+  }
+}
+
+@media (max-width: 991.98px) {
+  .crm-page { padding: 1rem; }
+}
+
+// =============================================================================
+// Hoftrix CRM — production responsive system
+// Breakpoints: 320/375/414/480 · 768/1024 · 1280/1440+
+// =============================================================================
+
+html, body {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+.wrapper,
+.page-content,
+.container-xxl {
+  max-width: 100%;
+}
+
+.page-content {
+  overflow-x: clip;
+}
+
+// —— Page header / actions ——
+.crm-page-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+  margin-bottom: 1.25rem;
+
+  .crm-page-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+  }
+}
+
+// —— Stat cards grid ——
+.crm-stat-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+
+  @media (min-width: 576px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  @media (min-width: 1200px) {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+// Fix Bootstrap Col md={3} stacks that jump to 4-col too early on tablet
+.crm-page .row > [class*='col-md-3'] {
+  @media (min-width: 768px) and (max-width: 1199.98px) {
+    flex: 0 0 auto;
+    width: 50%;
+  }
+}
+
+// —— Tables ——
+.table-responsive,
+.crm-table-scroll {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+
+  &::-webkit-scrollbar {
+    height: 6px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 999px;
+  }
+
+  .table {
+    min-width: 640px;
+    margin-bottom: 0;
+  }
+}
+
+// Mobile card list pattern (pair with .crm-desktop-table)
+.crm-mobile-cards {
+  display: none;
+  padding: 0.75rem;
+  gap: 0.75rem;
+  flex-direction: column;
+}
+
+.crm-mobile-card {
+  background: var(--hoftrix-surface-2);
+  border: 1px solid var(--hoftrix-border);
+  border-radius: 0.85rem;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+
+  .crm-mobile-card-title {
+    font-weight: 700;
+    font-size: 1rem;
+    color: #fff;
+    margin: 0;
+  }
+
+  .crm-mobile-card-meta {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem 0.75rem;
+    font-size: 0.8rem;
+
+    span.label {
+      display: block;
+      color: var(--hoftrix-muted-2);
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      font-weight: 700;
+      margin-bottom: 0.1rem;
+    }
+  }
+
+  .crm-mobile-card-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    padding-top: 0.35rem;
+    border-top: 1px solid var(--hoftrix-border);
+
+    .btn {
+      flex: 1 1 auto;
+      min-height: 40px;
+    }
+  }
+}
+
+@media (max-width: 767.98px) {
+  .crm-desktop-table {
+    display: none !important;
+  }
+
+  .crm-mobile-cards {
+    display: flex;
+  }
+
+  .crm-page {
+    padding: 0.75rem;
+  }
+
+  .crm-stat-card {
+    padding: 1rem 1.1rem;
+
+    .crm-stat-value {
+      font-size: 1.4rem;
+    }
+  }
+
+  .crm-page-header {
+    flex-direction: column;
+    align-items: stretch;
+
+    .crm-page-actions {
+      width: 100%;
+
+      .btn {
+        flex: 1 1 auto;
+        min-height: 44px;
+      }
+    }
+  }
+
+  // Stack common page title rows that use Col + Col xs=auto
+  .crm-page > .row.align-items-center,
+  .crm-page > .row.align-items-end,
+  .p-4 > .row.align-items-center,
+  .p-4 > .row.align-items-end {
+    > [class*='col'] {
+      width: 100%;
+      max-width: 100%;
+      flex: 0 0 100%;
+    }
+
+    > .col-auto,
+    > [class*='col-auto'] {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      width: 100%;
+      max-width: 100%;
+
+      .btn {
+        flex: 1 1 calc(50% - 0.25rem);
+        min-height: 44px;
+        justify-content: center;
+      }
+    }
+  }
+
+  // Forms: touch-friendly
+  .form-control,
+  .form-select,
+  .input-group-text {
+    min-height: 44px;
+    font-size: 16px; // prevent iOS zoom
+  }
+
+  .btn {
+    min-height: 40px;
+  }
+
+  .btn-sm {
+    min-height: 36px;
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+
+  .modal-dialog {
+    margin: 0.5rem;
+    max-width: calc(100% - 1rem);
+  }
+
+  .crm-tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap !important;
+
+    .nav-link {
+      white-space:nowrap;
+      padding: 0.75rem 0.85rem;
+    }
+  }
+
+  // Reduce motion / hover cost on mobile
+  .card.crm-card-hover:hover {
+    transform: none;
+  }
+
+  // Charts
+  .apexcharts-canvas,
+  .apexcharts-svg {
+    max-width: 100% !important;
+  }
+
+  .card-body {
+    padding: 1rem;
+  }
+}
+
+@media (max-width: 479.98px) {
+  .crm-page {
+    padding: 0.65rem;
+  }
+
+  h3, .h3 {
+    font-size: 1.25rem !important;
+  }
+
+  .crm-mobile-card-meta {
+    grid-template-columns: 1fr;
+  }
+
+  .topbar-actions .topbar-item:not(:last-child) {
+    // keep notifications + profile
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1199.98px) {
+  .crm-page {
+    padding: 1.15rem;
+  }
+
+  .crm-stat-card .crm-stat-value {
+    font-size: 1.5rem;
+  }
+}
+
+@media (min-width: 1440px) {
+  .crm-page {
+    padding: 1.75rem 1.5rem;
+  }
+}
+
+// —— Topbar mobile ——
+.mobile-search-collapse {
+  background: var(--hoftrix-surface);
+  border-bottom: 1px solid var(--hoftrix-border);
+  z-index: 1006;
+}
+
+.mobile-app-search .form-control {
+  min-height: 42px;
+}
+
+@media (max-width: 767.98px) {
+  .topbar {
+    .navbar-header {
+      gap: 0.25rem;
+    }
+
+    .app-search.d-none {
+      display: none !important;
+    }
+  }
+}
+
+// —— Invoice preview scaling ——
+.invoice-preview-frame {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  display: flex;
+  justify-content: center;
+  padding: 0.5rem 0 1rem;
+}
+
+.invoice-preview-scaler {
+  width: 210mm;
+  transform-origin: top center;
+}
+
+@media (max-width: 1199.98px) {
+  .invoice-preview-scaler {
+    transform: scale(0.85);
+    margin-bottom: calc(-297mm * 0.15);
+  }
+}
+
+@media (max-width: 991.98px) {
+  .invoice-preview-scaler {
+    transform: scale(0.72);
+    margin-bottom: calc(-297mm * 0.28);
+  }
+}
+
+@media (max-width: 767.98px) {
+  .invoice-preview-frame {
+    justify-content: flex-start;
+    padding: 0;
+  }
+
+  .invoice-preview-scaler {
+    transform: scale(0.48);
+    transform-origin: top left;
+    margin-bottom: calc(-297mm * 0.52);
+  }
+
+  #invoice-builder,
+  .invoice-view-page {
+    padding: 0.75rem !important;
+
+    .preview-wrap {
+      padding: 12px 8px 24px !important;
+      border-radius: 8px !important;
+    }
+  }
+}
+
+@media (max-width: 419.98px) {
+  .invoice-preview-scaler {
+    transform: scale(0.42);
+    margin-bottom: calc(-297mm * 0.58);
+  }
+}
+
+@media (min-width: 375px) and (max-width: 413.98px) {
+  .invoice-preview-scaler {
+    transform: scale(0.45);
+    margin-bottom: calc(-297mm * 0.55);
+  }
+}
+
+@media (min-width: 414px) and (max-width: 479.98px) {
+  .invoice-preview-scaler {
+    transform: scale(0.5);
+    margin-bottom: calc(-297mm * 0.5);
+  }
+}
+
+@media (min-width: 480px) and (max-width: 767.98px) {
+  .invoice-preview-scaler {
+    transform: scale(0.58);
+    margin-bottom: calc(-297mm * 0.42);
+  }
+}
+
+// Print / PDF: never scale
+@media print {
+  .invoice-preview-scaler {
+    transform: none !important;
+    margin-bottom: 0 !important;
+  }
+}
+
+// —— Kanban / pipeline ——
+.leads-kanban-board,
+.kanban-board,
+.crm-pipeline {
+  display: flex;
+  gap: 0.75rem;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 0.75rem;
+  scroll-snap-type: x proximity;
+
+  > * {
+    min-width: min(280px, 85vw);
+    scroll-snap-align: start;
+    flex-shrink: 0;
+  }
+}
+
+// —— Filters toolbar ——
+.crm-filters {
+  .row > [class*='col'] {
+    @media (max-width: 575.98px) {
+      width: 100%;
+      max-width: 100%;
+      flex: 0 0 100%;
+    }
+  }
+}
+
+// —— Footer ——
+@media (max-width: 767.98px) {
+  .footer {
+    text-align: center;
+    padding: 1rem 0.75rem;
+    font-size: 0.8rem;
+  }
+}
