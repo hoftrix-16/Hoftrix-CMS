@@ -1,0 +1,87 @@
+.hoftrix-loader {
+  min-height: 120px;
+  width: 100%;
+  display: grid;
+  place-items: center;
+  padding: 1.25rem 1rem;
+}
+
+.hoftrix-loader-compact {
+  min-height: 80px;
+}
+
+.hoftrix-loader-spinner {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.12);
+  border-top-color: #ff4d00;
+  animation: hoftrix-spin 0.6s linear infinite;
+}
+
+.hoftrix-page-fallback {
+  width: 100%;
+  padding: 0.35rem 0 1rem;
+}
+
+.hoftrix-page-fallback-bar {
+  height: 2px;
+  width: 100%;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+  position: relative;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 35%;
+    background: #ff4d00;
+    border-radius: inherit;
+    animation: hoftrix-indeterminate 0.9s ease-in-out infinite;
+  }
+}
+
+@keyframes hoftrix-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes hoftrix-indeterminate {
+  0% { transform: translateX(-120%); }
+  100% { transform: translateX(320%); }
+}
+
+@keyframes hoftrix-load-bar {
+  from { width: 0; }
+  to { width: 100%; }
+}
+
+.preloader-progress-bar {
+  background: rgba(255, 255, 255, 0.06);
+  top: 0;
+  position: fixed;
+  z-index: 9999;
+  display: flex;
+  left: 0;
+  width: 100%;
+  padding: 0;
+
+  .progress-value {
+    animation: hoftrix-load-bar 400ms normal forwards;
+    box-shadow: 0 10px 40px -10px var(--hoftrix-orange, #ff4d00);
+    border-radius: 0 5px 5px 0;
+    background: var(--hoftrix-orange, #ff4d00);
+    top: 0;
+    height: 2px;
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hoftrix-loader-spinner,
+  .hoftrix-page-fallback-bar::after,
+  .preloader-progress-bar .progress-value {
+    animation: none;
+  }
+}

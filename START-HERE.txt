@@ -1,0 +1,81 @@
+========================================
+  HOFTRIX CRM — NEW PC / SHARED COPY
+========================================
+
+Pehli baar kisi bhi naye PC pe yeh 4 steps karo.
+
+----------------------------------------
+STEP 1 — MongoDB install (ek baar)
+----------------------------------------
+1. Download: https://www.mongodb.com/try/download/community
+2. Install + MongoDB service START rakho
+3. Check: MongoDB Compass / service "MongoDB" Running
+
+----------------------------------------
+STEP 2 — Project setup (ek baar)
+----------------------------------------
+Project folder kholo → Terminal:
+
+  npm install
+  npm run setup:local
+
+Yeh kya karega:
+  - .env files banaega
+  - admin user MongoDB mein create karega
+
+----------------------------------------
+STEP 3 — Servers start
+----------------------------------------
+Terminal 1:
+  npm run backend:dev
+
+Terminal 2:
+  npm run dev
+
+----------------------------------------
+LIVE — api.hoftrix.com 503 fix
+----------------------------------------
+503 = Node.js app start nahi hua. Yeh check karo:
+
+1. api.hoftrix.com → Hostinger → NODE.JS website (PHP/static nahi)
+2. Startup file: server.js | Start: npm start | Node 20.x
+3. Upload backend folder YA: cd backend && npm run pack → backend-deploy.zip
+   Zip root mein directly server.js hona chahiye (backend/backend/ nested NAHI)
+4. .env.hostinger ki values Hostinger Environment Variables mein daalo
+   YA upload ke baad .env.hostinger ko .env rename karo
+5. MongoDB Atlas → Network Access → 0.0.0.0/0
+6. Test: https://api.hoftrix.com/api/health
+
+MONGODB_URI password mein @ ho to %40 likho (Primala7644@ → Primala7644%40)
+
+Frontend live: npm run build:prod → dist/ upload admin.hoftrix.com
+
+----------------------------------------
+STEP 4 — Login
+----------------------------------------
+Browser: http://localhost:5173
+
+  Email   : hoftrix16@gmail.com
+  Password: Ashu123@
+
+========================================
+AGAR LOGIN FAIL HO
+========================================
+1. Backend terminal mein "MongoDB Connected" dikhna chahiye
+2. Phir seed dubara:
+
+  npm run backend:seed
+
+3. Frontend URL localhost:5173 hona chahiye (Hostinger nahi)
+
+========================================
+DONO PC PE SAME DATA / SAME LOGIN
+(bina har PC pe seed ke)
+========================================
+MongoDB Atlas free cluster banao, connection string dono PC
+ke backend/.env mein MONGODB_URI pe daalo.
+
+Phir dono PC same cloud database use karenge —
+login + clients + invoices sab sync rahenge.
+
+========================================

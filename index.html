@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <!-- Non-blocking font load -->
+  <link
+    href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet"
+    media="print"
+    onload="this.media='all'"
+  />
+  <noscript>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  </noscript>
+  <title>Hoftrix CRM | Admin Dashboard</title>
+
+  <style>
+    html, body {
+      margin: 0;
+      background: #0b0f14;
+    }
+
+    #splash-screen {
+      position: fixed;
+      inset: 0;
+      z-index: 99999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background:
+        radial-gradient(700px 400px at 50% -10%, rgba(255, 77, 0, 0.16), transparent 55%),
+        #0b0f14;
+      opacity: 1;
+      visibility: visible;
+      transition: opacity 0.18s ease, visibility 0.18s ease;
+      font-family: Montserrat, system-ui, sans-serif;
+    }
+
+    #splash-screen.remove {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .splash-inner {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.85rem;
+      padding: 1rem;
+      text-align: center;
+    }
+
+    .splash-logo {
+      height: 32px;
+      max-width: min(200px, 70vw);
+      width: auto;
+      object-fit: contain;
+      filter: brightness(0) invert(1);
+    }
+
+    .splash-mark {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      display: grid;
+      place-items: center;
+      background: rgba(255, 77, 0, 0.14);
+      border: 1px solid rgba(255, 77, 0, 0.35);
+      color: #ff4d00;
+      font-weight: 800;
+      font-size: 1rem;
+    }
+
+    .splash-spinner {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 2px solid rgba(255, 255, 255, 0.12);
+      border-top-color: #ff4d00;
+      animation: splash-spin 0.6s linear infinite;
+    }
+
+    @keyframes splash-spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .splash-spinner { animation: none; }
+      #splash-screen { transition: none; }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="root"></div>
+  <div id="splash-screen" aria-busy="true" aria-live="polite">
+    <div class="splash-inner">
+      <img class="splash-logo" alt="Hoftrix" src="/logo-dark-full.svg" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'" />
+      <div class="splash-mark" style="display:none">H</div>
+      <div class="splash-spinner" role="status" aria-label="Loading"></div>
+    </div>
+  </div>
+  <script type="module" src="/src/main"></script>
+  <script>
+    (function () {
+      var rootEl = document.querySelector('#root')
+      var splash = document.querySelector('#splash-screen')
+      var hidden = false
+      function hideSplash() {
+        if (hidden || !splash) return
+        hidden = true
+        splash.classList.add('remove')
+        // Remove from DOM after fade so it never blocks
+        setTimeout(function () {
+          if (splash && splash.parentNode) splash.parentNode.removeChild(splash)
+        }, 220)
+      }
+      if (rootEl) {
+        new MutationObserver(function (_m, obs) {
+          if (rootEl.childElementCount > 0) {
+            hideSplash()
+            obs.disconnect()
+          }
+        }).observe(rootEl, { childList: true })
+      }
+      // Fast safety — do not wait 1.2s
+      setTimeout(hideSplash, 400)
+    })()
+  </script>
+</body>
+
+</html>

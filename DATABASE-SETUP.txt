@@ -1,0 +1,199 @@
+========================================
+  HOFTRIX CRM — DATABASE SETUP (BEGINNER)
+========================================
+
+IMPORTANT:
+- Yeh project MySQL nahi, MongoDB use karta hai
+- CREATE TABLE type SQL queries ki zarurat NAHI
+- App chalne pe collections (tables) auto ban jaati hain
+- Aapko sirf: Database banao + connection string .env mein daalo + seed chalao
+
+========================================
+OPTION A — MongoDB Atlas (CLOUD) ★ RECOMMENDED
+(dono PC / Hostinger pe same data)
+========================================
+
+STEP 1: Account
+1. Browser: https://www.mongodb.com/cloud/atlas
+2. Sign Up / Login (free)
+3. "Create" / "Build a Database" pe click
+
+STEP 2: Free cluster
+1. Plan: M0 FREE select karo
+2. Provider: AWS (default OK)
+3. Region: Mumbai (ap-south-1) agar mile, warna nearest
+4. Cluster name: Hoftrix (optional)
+5. Create Deployment / Create
+
+STEP 3: Database User
+1. Username: hoftrixAdmin
+2. Password: strong password banao (NOTEPAD mein SAVE karo)
+3. Create Database User
+
+STEP 4: Network Access (bahut zaroori)
+1. "Allow Access from Anywhere"
+2. IP: 0.0.0.0/0
+3. Confirm / Finish
+
+STEP 5: Connection string copy
+1. Cluster pe "Connect" click
+2. "Drivers" / "Connect your application"
+3. Driver: Node.js
+4. Jo URL aaye, copy karo. Example shape:
+
+mongodb+srv://hoftrixAdmin:<password>@cluster0.xxxxx.mongodb.net/?retryWrites=true&w=majority
+
+STEP 6: URL theek karo (yeh aapki FINAL query/URI hai)
+1. <password> hatao → apna real password daalo
+2. End pe database name add karo: hoftrix_db
+
+FINAL (example — apna password/cluster daalo):
+
+mongodb+srv://hoftrixAdmin:MeraPass123@cluster0.xxxxx.mongodb.net/hoftrix_db?retryWrites=true&w=majority
+
+NOTE:
+- Password mein @ # % ho to URL-encode karna padta hai
+  @ = %40
+  # = %23
+  % = %25
+
+STEP 7: Project mein daalo
+File kholo: backend/.env
+
+Yeh line set/replace karo:
+
+MONGODB_URI=mongodb+srv://hoftrixAdmin:MeraPass123@cluster0.xxxxx.mongodb.net/hoftrix_db?retryWrites=true&w=majority
+
+Baaki local ke liye aisa rakho:
+
+NODE_ENV=development
+PORT=5000
+HOST=0.0.0.0
+JWT_SECRET=hoftrix_jwt_dev_secret_change_in_production
+DEFAULT_EMPLOYEE_PASSWORD=WELCOME
+CORS_ORIGIN=http://localhost:5173,http://127.0.0.1:5173
+API_PUBLIC_URL=http://localhost:5000
+FRONTEND_URL=http://localhost:5173
+ADMIN_EMAIL=hoftrix16@gmail.com
+ADMIN_PASSWORD=Ashu123@
+ADMIN_NAME=Hoftrix Admin
+ADMIN_PHONE=7889356866
+
+STEP 8: Admin user banao (seed)
+Project root terminal:
+
+  cd backend
+  npm run seed
+
+Success pe dikhega:
+  Admin user created
+  Email: hoftrix16@gmail.com
+  Password: Ashu123@
+
+STEP 9: App chalao
+Terminal 1:
+  cd backend
+  npm run dev
+
+Terminal 2 (project root):
+  npm run dev
+
+Browser:
+  http://localhost:5173
+
+Login:
+  Email   : hoftrix16@gmail.com
+  Password: Ashu123@
+
+STEP 10: Check (optional) — Atlas pe data dikhe
+1. Atlas → Browse Collections
+2. Database: hoftrix_db
+3. Collection: users  (admin yahan hoga)
+
+========================================
+OPTION B — Local MongoDB (sirf apne PC pe)
+========================================
+
+STEP 1: Install
+https://www.mongodb.com/try/download/community
+Install + service Running rakho
+
+STEP 2: backend/.env
+MONGODB_URI=mongodb://127.0.0.1:27017/hoftrix_db
+
+STEP 3: Seed + run
+  cd backend
+  npm run seed
+  npm run dev
+
+Frontend:
+  npm run dev
+
+========================================
+JO "QUERIES" AAP MONGOSH / COMPASS MEIN CHALA SAKTE HO
+(verify ke liye — create tables ki zarurat nahi)
+========================================
+
+1) Database select:
+use hoftrix_db
+
+2) Collections list:
+show collections
+
+3) Admin user dekho:
+db.users.find({ role: "admin" }).pretty()
+
+4) Kitne clients:
+db.clients.countDocuments()
+
+5) Kitne invoices:
+db.invoices.countDocuments()
+
+6) Agar galti se admin delete ho jaye:
+(Project folder se seed dubara chalao — yeh best hai)
+  cd backend
+  npm run seed
+
+========================================
+APP AUTO YE COLLECTIONS BANATI HAI
+========================================
+users
+clients
+employees
+projects
+invoices
+companysettings
+leads
+finances
+proposals
+contracts
+services
+activitylogs
+holidays
+
+Inhe CREATE TABLE se nahi banana — app + seed se ban jaati hain.
+
+========================================
+COMMON ERRORS
+========================================
+1) Network error / cannot connect
+   → Atlas Network Access mein 0.0.0.0/0 allow karo
+   → Password connection string mein sahi hai?
+
+2) User not found / Missing credentials
+   → npm run seed dubara chalao
+
+3) Authentication failed
+   → Atlas username/password galat, ya password special chars encode nahi
+
+========================================
+HOSTINGER BACKEND KE LIYE
+========================================
+Wahi Atlas MONGODB_URI Hostinger Environment Variables /
+backend .env mein daalo + Restart.
+
+Phir seed ek baar (Hostinger terminal / local se Atlas pe):
+  cd backend
+  npm run seed
+
+========================================
