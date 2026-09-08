@@ -24,12 +24,9 @@ const { getDefaultAvatar } = require('../utils/avatar');
 const { getDefaultEmployeePassword } = require('../utils/passwords');
 const { isDbConnected } = require('../utils/dbStatus');
 
-const { sendOtpEmail } = require('../mail/mail');
+const { sendOtpEmail } = require('../mail/Mail');
 
 
-// =====================================================
-// OTP HELPERS
-// =====================================================
 
 function generateOtp() {
   return crypto.randomInt(100000, 1000000).toString();
