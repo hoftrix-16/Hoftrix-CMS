@@ -8,6 +8,8 @@ import { useAuthContext } from '@/context/useAuthContext'
 import api from '@/helpers/api'
 import { toast } from 'react-toastify'
 import { useState, useEffect } from 'react'
+import { Mail } from 'lucide-react'
+import EmailModal from '@/app/(other)/auth/change-Email/EmailModal'
 
 const AboutCard = () => {
   const { user, saveSession } = useAuthContext()
@@ -24,6 +26,7 @@ const AboutCard = () => {
 
   const [isEditing, setIsEditing] = useState(false)
   const [showPasswordModal, setShowPasswordModal] = useState(false)
+  const [showEmailModal, setShowEmailModal] = useState(false)
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: '',
     newPassword: '',
@@ -74,7 +77,7 @@ const AboutCard = () => {
     skills: '',
   })
 
-  // Fetch profile from database to ensure fresh data
+ 
   useEffect(() => {
     const fetchProfile = async () => {
       const targetId = profileId || loggedInId
@@ -207,7 +210,61 @@ const AboutCard = () => {
       }
     }
     reader.readAsDataURL(file)
+    
   }
+
+  const handleVerifyEmailPassword = async (password: string) => {
+  try {
+    const response = await api.post('/auth/verify-password', {
+      id: user?.id || user?._id || formData.id,
+      password,
+    })
+    return response.data?.success === true
+  } catch (error: any) {
+    if (error.response?.status === 401) {
+      return false
+    }
+
+    throw error
+  }
+}
+
+const handleEmailChange = async (newEmail: string) => {
+  try {
+    const response = await api.put('/auth/update-profile', {
+      id: user?.id || user?._id || formData.id,
+      email: newEmail,
+    })
+
+    toast.success(response.data?.message || 'Email changed successfully!')
+
+    if (isSelf && saveSession) {
+      saveSession({
+        ...user,
+        ...response.data.user,
+        email: newEmail,
+        token: user?.token || '',
+      } as any)
+    } else if (response.data?.user) {
+      setActiveUser(response.data.user)
+    }
+
+    // Keep form data in sync
+    setFormData((prev) => ({
+      ...prev,
+      email: newEmail,
+    }))
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message || 'Failed to change email'
+    )
+  }
+}
+
+const handleForgotPassword = () => {
+
+  window.location.href = '/forgot-password'
+}
 
   const isElevated = isAdmin || user?.role === 'manager'
 
@@ -222,6 +279,7 @@ const AboutCard = () => {
   }
 
   return (
+    <>
     <Card>
       <style>{`
         .profile-avatar-container {
@@ -402,10 +460,14 @@ const AboutCard = () => {
               </div>
 
               {isSelf && (
-                <div className="mt-3">
+                <div className="d-flex  gap-3 mt-3">
                   <Button variant="outline-danger" size="sm" onClick={() => setShowPasswordModal(true)}>
                     <IconifyIcon icon="bx:key" className="me-1" />
                     Change Password
+                  </Button>
+                  <Button variant="outline-danger" size="sm" onClick={() => setShowEmailModal(true)}>
+                    <Mail size={16} className="me-1" />
+                    Change Email
                   </Button>
                 </div>
               )}
@@ -487,6 +549,14 @@ const AboutCard = () => {
       </Modal>
 
     </Card>
+   <EmailModal
+  show={showEmailModal}
+  onHide={() => setShowEmailModal(false)}
+  onVerifyPassword={handleVerifyEmailPassword}
+  onChangeEmail={handleEmailChange}
+  onForgotPassword={handleForgotPassword}
+/>
+    </>
   )
 }
 

@@ -5,10 +5,11 @@ function createTransporter() {
   const host = process.env.SMTP_HOST;
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASS;
+  const port = Number(process.env.SMTP_PORT) || 587;
 
   console.log('📧 SMTP CONFIG:', {
     host,
-    port: process.env.SMTP_PORT,
+    port,
     user,
     hasPassword: !!pass,
     secure: process.env.SMTP_SECURE,
@@ -18,14 +19,19 @@ function createTransporter() {
   if (host && user && pass) {
     return nodemailer.createTransport({
       host,
-      port: Number(process.env.SMTP_PORT) || 587,
-      secure:
-        process.env.SMTP_SECURE === 'true' ||
-        Number(process.env.SMTP_PORT) === 465,
+      port,
+      secure: port === 465,
       auth: {
         user,
         pass,
       },
+
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 15000,
+
+      logger: true,
+      debug: true,
     });
   }
 
@@ -36,6 +42,13 @@ function createTransporter() {
         user,
         pass,
       },
+
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 15000,
+
+      logger: true,
+      debug: true,
     });
   }
 
@@ -43,7 +56,6 @@ function createTransporter() {
 
   return null;
 }
-
 async function sendOtpEmail(
   recipientEmail,
   otpCode,
@@ -310,47 +322,50 @@ async function sendOtpEmail(
 `;
 
 
-  if (transporter) {
-    try {
-      const info = await transporter.sendMail({
-        from: fromAddress,
-        to: recipientEmail,
-        subject: `Your Hoftrix Verification Code: ${otpCode}`,
-        html: htmlContent,
+ if (transporter) {
+  try {
+    console.log('📧 SMTP: verifying connection...');
 
-        attachments: [
-          {
-            filename: 'hoftrixtechnologies_logo.jpeg',
-            path: path.join(
-              __dirname,
-              '../uploads/hoftrixtechnologies_logo.jpeg'
-            ),
-            cid: 'hoftrix-logo',
-          },
-        ],
-      });
+    await transporter.verify();
 
-      return {
-        sent: true,
-        messageId: info.messageId,
-      };
-    } catch (err) {
-      console.error(
-        `❌ SMTP send error to ${recipientEmail}:`,
-        err.message
-      );
+    const logoPath = path.join(
+      __dirname,
+      '../uploads/hoftrixtechnologies_logo.jpeg'
+    );
 
-      return {
-        sent: false,
-        error: err.message,
-      };
-    }
+    console.log('📎 Logo path:', logoPath);
+
+    const info = await transporter.sendMail({
+      from: fromAddress,
+      to: recipientEmail,
+      subject: `Your Hoftrix Verification Code: ${otpCode}`,
+      html: htmlContent,
+
+      attachments: [
+        {
+          filename: 'hoftrixtechnologies_logo.jpeg',
+          path: logoPath,
+          cid: 'hoftrix-logo',
+        },
+      ],
+    });
+
+    return {
+      sent: true,
+      messageId: info.messageId,
+    };
+  } catch (err) {
+    console.error(
+      `❌ SMTP error to ${recipientEmail}:`,
+      err
+    );
+
+    return {
+      sent: false,
+      error: err?.message || String(err),
+    };
   }
-
-  return {
-    sent: true,
-    simulated: true,
-  };
+}
 }
 
 module.exports = {

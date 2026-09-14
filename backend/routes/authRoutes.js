@@ -40,10 +40,6 @@ function hashOtp(otp) {
 }
 
 
-// =====================================================
-// FORMAT USER RESPONSE
-// =====================================================
-
 const formatUserResponse = (user) => ({
   id: user._id,
   name: user.name,
@@ -60,11 +56,6 @@ const formatUserResponse = (user) => ({
   projectName: user.projectName || '',
 });
 
-
-// =====================================================
-// LOGIN
-// PUBLIC ROUTE
-// =====================================================
 
 router.post('/login', async (req, res) => {
   try {
@@ -139,11 +130,6 @@ router.post('/login', async (req, res) => {
 });
 
 
-// =====================================================
-// REGISTER CLIENT
-// ADMIN OR STAFF WITH CLIENT MANAGEMENT ACCESS
-// =====================================================
-
 router.post(
   '/register',
   authenticate,
@@ -210,9 +196,9 @@ router.post(
 );
 
 
-
 router.post('/forgot-password', async (req, res) => {
   try {
+    console.log('Forgot Password Request:', req.body);
     const email = String(req.body?.email || '')
       .toLowerCase()
       .trim();
@@ -391,11 +377,6 @@ router.post('/verify-reset-otp', async (req, res) => {
   }
 });
 
-
-// =====================================================
-// RESET PASSWORD
-// PUBLIC ROUTE
-// =====================================================
 
 router.post('/reset-password', async (req, res) => {
   try {
@@ -982,6 +963,53 @@ router.delete(
     }
   }
 );
+
+router.post('/verify-password', async (req, res) => {
+  try {
+    const { id, password } = req.body;
+
+    if (!id || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password is required',
+      });
+    }
+
+    const user = await User.findById(id);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found',
+      });
+    }
+
+    const isPasswordCorrect = await bcrypt.compare(
+      password,
+      user.password
+    );
+
+    if (!isPasswordCorrect) {
+      return res.status(401).json({
+        success: false,
+        message: 'Password not correct',
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Password verified successfully',
+    });
+
+  } catch (err) {
+    console.error('Verify Password Error:', err);
+
+    return res.status(500).json({
+      success: false,
+      message: 'Unable to verify password',
+    });
+  }
+});
 
 
 module.exports = router;
