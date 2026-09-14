@@ -1,10 +1,26 @@
+import { useEffect, useState } from "react";
+import {
+  Modal,
+  Form,
+  Button,
+  Alert,
+  Spinner,
+} from "react-bootstrap";
+import {
+  LockKeyhole,
+  Mail,
+  Eye,
+  EyeOff,
+  ArrowLeft,
+} from "lucide-react";
 
-import React, { useEffect, useState } from "react";
-import { Modal, Form, Button, Alert, Spinner } from "react-bootstrap";
-import { LockKeyhole, Mail, Eye, EyeOff, ArrowLeft } from "lucide-react";
-
-
-
+interface EmailModalProps {
+  show: boolean;
+  onHide: () => void;
+  onVerifyPassword: (password: string) => Promise<boolean>;
+  onChangeEmail: (email: string) => Promise<void>;
+  onForgotPassword?: () => void;
+}
 
 const EmailModal = ({
   show,
@@ -12,16 +28,17 @@ const EmailModal = ({
   onVerifyPassword,
   onChangeEmail,
   onForgotPassword,
-}) => {
-  const [step, setStep] = useState(1);
+}: EmailModalProps) => {
+  const [step, setStep] = useState<number>(1);
 
-  const [password, setPassword] = useState("");
-  const [newEmail, setNewEmail] = useState("");
+  const [password, setPassword] = useState<string>("");
+  const [newEmail, setNewEmail] = useState<string>("");
 
-  const [showPassword, setShowPassword] = useState(false);
+  const [showPassword, setShowPassword] =
+    useState<boolean>(false);
 
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string>("");
+  const [loading, setLoading] = useState<boolean>(false);
 
   useEffect(() => {
     if (!show) {
@@ -34,7 +51,9 @@ const EmailModal = ({
     }
   }, [show]);
 
-  const handleVerifyPassword = async (e) => {
+  const handleVerifyPassword = async (
+    e: React.FormEvent<HTMLFormElement>
+  ) => {
     e.preventDefault();
 
     if (!password.trim()) {
@@ -54,7 +73,7 @@ const EmailModal = ({
       } else {
         setError("Incorrect password. Please try again.");
       }
-    } catch (error) {
+    } catch (error: any) {
       setError(
         error?.response?.data?.message ||
           error?.message ||
@@ -65,7 +84,9 @@ const EmailModal = ({
     }
   };
 
-  const handleChangeEmail = async (e) => {
+  const handleChangeEmail = async (
+    e: React.FormEvent<HTMLFormElement>
+  ) => {
     e.preventDefault();
 
     if (!newEmail.trim()) {
@@ -85,7 +106,7 @@ const EmailModal = ({
       setError("");
 
       onHide();
-    } catch (error) {
+    } catch (error: any) {
       setError(
         error?.response?.data?.message ||
           error?.message ||
@@ -103,18 +124,30 @@ const EmailModal = ({
   };
 
   return (
-
-    <Modal show={show} onHide={onHide} centered>
-      <Modal.Header closeButton className="bg-light">
+    <Modal
+      show={show}
+      onHide={onHide}
+      centered
+    >
+      <Modal.Header
+        closeButton
+        className="bg-light"
+      >
         <Modal.Title className="fw-bold fs-16 text-dark d-flex align-items-center">
           {step === 1 ? (
             <>
-              <LockKeyhole size={18} className="me-2 text-danger" />
+              <LockKeyhole
+                size={18}
+                className="me-2 text-danger"
+              />
               Verify Password
             </>
           ) : (
             <>
-              <Mail size={18} className="me-2 text-danger" />
+              <Mail
+                size={18}
+                className="me-2 text-danger"
+              />
               Change Email
             </>
           )}
@@ -125,12 +158,15 @@ const EmailModal = ({
         <Form onSubmit={handleVerifyPassword}>
           <Modal.Body className="p-4">
             <p className="text-muted small mb-3">
-              Enter your current password to continue changing your email
-              address.
+              Enter your current password to continue
+              changing your email address.
             </p>
 
             {error && (
-              <Alert variant="danger" className="py-2 small">
+              <Alert
+                variant="danger"
+                className="py-2 small"
+              >
                 {error}
               </Alert>
             )}
@@ -142,10 +178,16 @@ const EmailModal = ({
 
               <div className="position-relative">
                 <Form.Control
-                  type={showPassword ? "text" : "password"}
+                  type={
+                    showPassword
+                      ? "text"
+                      : "password"
+                  }
                   required
                   value={password}
-                  onChange={(e) => {
+                  onChange={(
+                    e: React.ChangeEvent<HTMLInputElement>
+                  ) => {
                     setPassword(e.target.value);
                     setError("");
                   }}
@@ -156,11 +198,17 @@ const EmailModal = ({
 
                 <button
                   type="button"
-                  onClick={() => setShowPassword(!showPassword)}
+                  onClick={() =>
+                    setShowPassword(
+                      !showPassword
+                    )
+                  }
                   className="position-absolute top-50 end-0 translate-middle-y border-0 bg-transparent text-muted me-2 p-1"
                   disabled={loading}
                   aria-label={
-                    showPassword ? "Hide password" : "Show password"
+                    showPassword
+                      ? "Hide password"
+                      : "Show password"
                   }
                 >
                   {showPassword ? (
@@ -204,7 +252,10 @@ const EmailModal = ({
             >
               {loading ? (
                 <>
-                  <Spinner size="sm" className="me-2" />
+                  <Spinner
+                    size="sm"
+                    className="me-2"
+                  />
                   Verifying...
                 </>
               ) : (
@@ -217,12 +268,16 @@ const EmailModal = ({
         <Form onSubmit={handleChangeEmail}>
           <Modal.Body className="p-4">
             <p className="text-muted small mb-3">
-              Your password has been verified. Enter the new email address you
-              want to use for your account.
+              Your password has been verified. Enter the
+              new email address you want to use for your
+              account.
             </p>
 
             {error && (
-              <Alert variant="danger" className="py-2 small">
+              <Alert
+                variant="danger"
+                className="py-2 small"
+              >
                 {error}
               </Alert>
             )}
@@ -242,7 +297,9 @@ const EmailModal = ({
                   type="email"
                   required
                   value={newEmail}
-                  onChange={(e) => {
+                  onChange={(
+                    e: React.ChangeEvent<HTMLInputElement>
+                  ) => {
                     setNewEmail(e.target.value);
                     setError("");
                   }}
@@ -265,7 +322,10 @@ const EmailModal = ({
               }}
               disabled={loading}
             >
-              <ArrowLeft size={15} className="me-1" />
+              <ArrowLeft
+                size={15}
+                className="me-1"
+              />
               Back
             </Button>
 
@@ -278,7 +338,10 @@ const EmailModal = ({
             >
               {loading ? (
                 <>
-                  <Spinner size="sm" className="me-2" />
+                  <Spinner
+                    size="sm"
+                    className="me-2"
+                  />
                   Updating...
                 </>
               ) : (
