@@ -8,10 +8,6 @@ import { useForm } from 'react-hook-form'
 import * as yup from 'yup'
 
 
-// =====================================================
-// EMAIL VALIDATION
-// =====================================================
-
 const emailSchema = yup.object({
   email: yup
     .string()
@@ -20,10 +16,6 @@ const emailSchema = yup.object({
 })
 
 
-// =====================================================
-// OTP VALIDATION
-// =====================================================
-
 const otpSchema = yup.object({
   otp: yup
     .string()
@@ -31,10 +23,6 @@ const otpSchema = yup.object({
     .required('Please enter the OTP'),
 })
 
-
-// =====================================================
-// PASSWORD VALIDATION
-// =====================================================
 
 const passwordSchema = yup.object({
   password: yup
@@ -57,10 +45,6 @@ type OtpFields = yup.InferType<typeof otpSchema>
 type PasswordFields = yup.InferType<typeof passwordSchema>
 
 
-// =====================================================
-// COMPONENT
-// =====================================================
-
 const ResetPassForm = () => {
   const [loading, setLoading] = useState(false)
 
@@ -74,10 +58,6 @@ const ResetPassForm = () => {
   const { showNotification } =
     useNotificationContext()
 
-
-  // =====================================================
-  // EMAIL FORM
-  // =====================================================
 
   const {
     control: emailControl,
@@ -125,10 +105,6 @@ const ResetPassForm = () => {
   })
 
 
-  // =====================================================
-  // STEP 1
-  // SEND OTP
-  // =====================================================
 
   const onEmailSubmit = handleEmailSubmit(
     async (values) => {
@@ -205,11 +181,6 @@ const ResetPassForm = () => {
     }
   )
 
-
-  // =====================================================
-  // STEP 3
-  // RESET PASSWORD
-  // =====================================================
 
   const onPasswordSubmit = handlePasswordSubmit(
     async (values) => {

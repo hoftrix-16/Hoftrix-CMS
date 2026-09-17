@@ -1,6 +1,6 @@
 const nodemailer = require('nodemailer');
 const path = require('path');
-
+const fs = require('fs');
 function createTransporter() {
   const host = process.env.SMTP_HOST;
   const user = process.env.SMTP_USER;
@@ -328,12 +328,16 @@ async function sendOtpEmail(
 
     await transporter.verify();
 
-    const logoPath = path.join(
-      __dirname,
-      '../uploads/hoftrixtechnologies_logo.jpeg'
-    );
+   const logoPath = path.resolve(
+  __dirname,
+  '../assets/hoftrixtechnologies_logo.jpeg'
+);
 
-    console.log('📎 Logo path:', logoPath);
+
+if (!fs.existsSync(logoPath)) {
+  throw new Error(`Email logo not found: ${logoPath}`);
+}
+   
 
     const info = await transporter.sendMail({
       from: fromAddress,
