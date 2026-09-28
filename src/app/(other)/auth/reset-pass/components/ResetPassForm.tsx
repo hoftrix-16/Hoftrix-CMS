@@ -3,10 +3,10 @@ import TextFormInput from '@/components/form/TextFormInput'
 import { useNotificationContext } from '@/context/useNotificationContext'
 import httpClient from '@/helpers/httpClient'
 import { yupResolver } from '@hookform/resolvers/yup'
-import { Button } from 'react-bootstrap'
+import { Button, InputGroup } from 'react-bootstrap'
 import { useForm } from 'react-hook-form'
 import * as yup from 'yup'
-
+import IconifyIcon from '@/components/wrappers/IconifyIcon'
 
 const emailSchema = yup.object({
   email: yup
@@ -15,14 +15,12 @@ const emailSchema = yup.object({
     .required('Please enter your email'),
 })
 
-
 const otpSchema = yup.object({
   otp: yup
     .string()
     .matches(/^\d{6}$/, 'OTP must be 6 digits')
     .required('Please enter the OTP'),
 })
-
 
 const passwordSchema = yup.object({
   password: yup
@@ -39,11 +37,9 @@ const passwordSchema = yup.object({
     .required('Please confirm your password'),
 })
 
-
 type EmailFields = yup.InferType<typeof emailSchema>
 type OtpFields = yup.InferType<typeof otpSchema>
 type PasswordFields = yup.InferType<typeof passwordSchema>
-
 
 const ResetPassForm = () => {
   const [loading, setLoading] = useState(false)
@@ -55,9 +51,10 @@ const ResetPassForm = () => {
 
   const [email, setEmail] = useState('')
 
-  const { showNotification } =
-    useNotificationContext()
+  // Toggle state for Confirm Password field
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
+  const { showNotification } = useNotificationContext()
 
   const {
     control: emailControl,
@@ -69,11 +66,6 @@ const ResetPassForm = () => {
     },
   })
 
-
-  // =====================================================
-  // OTP FORM
-  // =====================================================
-
   const {
     control: otpControl,
     handleSubmit: handleOtpSubmit,
@@ -84,11 +76,6 @@ const ResetPassForm = () => {
       otp: '',
     },
   })
-
-
-  // =====================================================
-  // PASSWORD FORM
-  // =====================================================
 
   const {
     register: registerPassword,
@@ -103,8 +90,6 @@ const ResetPassForm = () => {
       confirmPassword: '',
     },
   })
-
-
 
   const onEmailSubmit = handleEmailSubmit(
     async (values) => {
@@ -141,12 +126,6 @@ const ResetPassForm = () => {
     }
   )
 
-
-  // =====================================================
-  // STEP 2
-  // VERIFY OTP
-  // =====================================================
-
   const onOtpSubmit = handleOtpSubmit(
     async (values) => {
       setLoading(true)
@@ -180,7 +159,6 @@ const ResetPassForm = () => {
       }
     }
   )
-
 
   const onPasswordSubmit = handlePasswordSubmit(
     async (values) => {
@@ -219,22 +197,11 @@ const ResetPassForm = () => {
     }
   )
 
-
-  // =====================================================
-  // CHANGE EMAIL
-  // =====================================================
-
   const handleChangeEmail = () => {
     setEmail('')
     resetOtpForm()
     setStep(1)
   }
-
-
-  // =====================================================
-  // STEP 1 UI
-  // EMAIL
-  // =====================================================
 
   if (step === 1) {
     return (
@@ -266,12 +233,6 @@ const ResetPassForm = () => {
     )
   }
 
-
-  // =====================================================
-  // STEP 2 UI
-  // OTP
-  // =====================================================
-
   if (step === 2) {
     return (
       <form
@@ -297,7 +258,6 @@ const ResetPassForm = () => {
           </p>
         </div>
 
-
         <TextFormInput
           control={otpControl}
           name="otp"
@@ -306,7 +266,6 @@ const ResetPassForm = () => {
           id="otp-id"
           placeholder="Enter 6-digit OTP"
         />
-
 
         <div className="mb-3 text-center d-grid">
           <Button
@@ -319,7 +278,6 @@ const ResetPassForm = () => {
               : 'Verify OTP'}
           </Button>
         </div>
-
 
         <div className="text-center">
           <button
@@ -335,18 +293,11 @@ const ResetPassForm = () => {
     )
   }
 
-
-  // =====================================================
-  // STEP 3 UI
-  // NEW PASSWORD
-  // =====================================================
-
   return (
     <form
       className="authentication-form"
       onSubmit={onPasswordSubmit}
     >
-
       {/* Heading */}
       <div className="text-center mb-4">
         <h5 className="mb-2">
@@ -358,13 +309,7 @@ const ResetPassForm = () => {
         </p>
       </div>
 
-
-      {/* =========================================
-          NEW PASSWORD
-      ========================================= */}
-
       <div className="mb-3">
-
         <label
           htmlFor="password-id"
           className="form-label"
@@ -390,16 +335,10 @@ const ResetPassForm = () => {
             {passwordErrors.password.message}
           </div>
         )}
-
       </div>
 
-
-      {/* =========================================
-          CONFIRM PASSWORD
-      ========================================= */}
-
+      {/* Confirm Password with Eye Toggle Button */}
       <div className="mb-3">
-
         <label
           htmlFor="confirm-password-id"
           className="form-label"
@@ -407,38 +346,36 @@ const ResetPassForm = () => {
           Confirm Password
         </label>
 
-        <input
-          {...registerPassword('confirmPassword')}
-          id="confirm-password-id"
-          type="password"
-          className={`form-control ${
-            passwordErrors.confirmPassword
-              ? 'is-invalid'
-              : ''
-          }`}
-          placeholder="Confirm your new password"
-          autoComplete="new-password"
-        />
+        <InputGroup className={passwordErrors.confirmPassword ? 'has-validation' : ''}>
+          <input
+            {...registerPassword('confirmPassword')}
+            id="confirm-password-id"
+            type={showConfirmPassword ? 'text' : 'password'}
+            className={`form-control ${
+              passwordErrors.confirmPassword
+                ? 'is-invalid'
+                : ''
+            }`}
+            placeholder="Confirm your new password"
+            autoComplete="new-password"
+          />
+          <Button
+            variant="outline-secondary"
+            type="button"
+            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+          >
+            <IconifyIcon icon={showConfirmPassword ? 'bx:hide' : 'bx:show'} />
+          </Button>
 
-        {passwordErrors.confirmPassword && (
-          <div className="invalid-feedback">
-            {
-              passwordErrors
-                .confirmPassword
-                .message
-            }
-          </div>
-        )}
-
+          {passwordErrors.confirmPassword && (
+            <div className="invalid-feedback">
+              {passwordErrors.confirmPassword.message}
+            </div>
+          )}
+        </InputGroup>
       </div>
 
-
-      {/* =========================================
-          RESET BUTTON
-      ========================================= */}
-
       <div className="mb-1 text-center d-grid">
-
         <Button
           variant="primary"
           type="submit"
@@ -448,12 +385,9 @@ const ResetPassForm = () => {
             ? 'Resetting...'
             : 'Reset Password'}
         </Button>
-
       </div>
-
     </form>
   )
 }
-
 
 export default ResetPassForm

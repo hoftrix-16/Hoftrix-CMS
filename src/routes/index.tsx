@@ -3,6 +3,8 @@ import { Navigate, type RouteProps } from 'react-router-dom'
 
 // Eager: login is the first screen for most users
 import AuthSignIn from '@/app/(other)/auth/sign-in/page'
+import SettingPage from '@/app/(admin)/pages/settings/SettingPage'
+
 
 const Analytics = lazy(() => import('@/app/(admin)/dashboard/analytics/page'))
 const Finance = lazy(() => import('@/app/(admin)/dashboard/finance/page'))
@@ -67,6 +69,7 @@ const customRoutes: RoutesProps[] = [
   { path: '/pages/clients', name: 'Clients', element: <Clients /> },
   { path: '/pages/clients/:id', name: 'Client Detail', element: <ClientDetail /> },
   { path: '/pages/add-client', name: 'Add Client', element: <AddClient /> },
+  { path: '/pages/setting', name: 'Settings', element: <SettingPage /> },
   { path: '/pages/invoices', name: 'Invoices', element: <Invoices /> },
   { path: '/pages/invoices/new', name: 'New Invoice', element: <InvoiceBuilder /> },
   { path: '/pages/invoices/settings', name: 'Invoice Branding', element: <InvoiceSettings /> },

@@ -90,7 +90,7 @@ router.post('/login', async (req, res) => {
     if (!user) {
       return res.status(404).json({
         message:
-          'User not found. On a new PC run: cd backend && npm run seed (MongoDB must be running).',
+          'User not found. Please sign up first.',
       });
     }
 
@@ -101,7 +101,7 @@ router.post('/login', async (req, res) => {
 
     if (!isMatch) {
       return res.status(400).json({
-        message: 'Invalid credentials',
+        message: 'Incorrect password. Please try again.',
       });
     }
 
@@ -622,66 +622,96 @@ router.post(
   adminOnly,
   async (req, res) => {
     try {
-      const { userId, email } = req.body;
+      const { userId, email, password } = req.body;
 
-      let user;
+      if (!password || typeof password !== 'string') {
+        return res.status(400).json({
+          message: 'New password is required',
+        });
+      }
+
+      if (password.length < 6) {
+        return res.status(400).json({
+          message: 'Password must be at least 6 characters long',
+        });
+      }
+
+      if (!userId && !email) {
+        return res.status(400).json({
+          message: 'userId or email is required',
+        });
+      }
+
+      const normalizedEmail = email
+        ? email.trim().toLowerCase()
+        : null;
+
+      let user = null;
 
       if (userId) {
         user = await User.findById(userId);
-      } else if (email) {
+      }
+
+      if (!user && normalizedEmail) {
         user = await User.findOne({
-          email: email.toLowerCase(),
-        });
-      } else {
-        return res.status(400).json({
-          message:
-            'userId or email is required',
+          email: normalizedEmail,
         });
       }
 
-      const defaultPassword =
-        getDefaultEmployeePassword();
+      if (!user && normalizedEmail) {
+        user = await User.findOne({
+          email: {
+            $regex: `^${normalizedEmail.replace(
+              /[.*+?^${}()|[\]\\]/g,
+              '\\$&'
+            )}$`,
+            $options: 'i',
+          },
+        });
+      }
 
       if (!user) {
-        const {
-          Employee,
-        } = require('../models/ERPModels');
+        const { Employee } = require('../models/ERPModels');
 
-        const employee =
-          await Employee.findOne({
-            email: email?.toLowerCase(),
-          });
+        const employee = await Employee.findOne({
+          email: normalizedEmail,
+        });
 
         if (!employee) {
           return res.status(404).json({
-            message:
-              'Employee profile not found in database',
+            message: 'Employee profile not found in database',
           });
         }
 
-        user = new User({
-          name: employee.name,
-          email: employee.email.toLowerCase(),
-          phone: employee.phone || '',
-          password: defaultPassword,
-          role: 'employee',
-          designation:
-            employee.designation || '',
-          avatar:
-            employee.avatar ||
-            getDefaultAvatar(employee.name),
+        user = await User.findOne({
+          email: employee.email.trim().toLowerCase(),
         });
 
-        await user.save();
-      } else {
-        user.password = defaultPassword;
+        if (!user) {
+          user = new User({
+            name: employee.name,
+            email: employee.email.trim().toLowerCase(),
+            phone: employee.phone || '',
+            password,
+            role: 'employee',
+            designation: employee.designation || '',
+            avatar:
+              employee.avatar ||
+              getDefaultAvatar(employee.name),
+          });
 
+          await user.save();
+        } else {
+          user.password = password;
+          await user.save();
+        }
+      } else {
+        user.password = password;
         await user.save();
       }
 
-      res.json({
-        message:
-          `Password reset successfully for ${user.name}. Share the new credentials securely.`,
+      return res.json({
+        message: `Password changed successfully for ${user.name}.`,
       });
     } catch (err) {
       console.error(
@@ -689,14 +719,19 @@ router.post(
         err
       );
 
-      res.status(500).json({
-        message: err.message,
+      if (err.code === 11000) {
+        return res.status(409).json({
+          message:
+            'A user with this email already exists. Please refresh the employee profile and try again.',
+        });
+      }
+
+      return res.status(500).json({
+        message: err.message || 'Failed to reset password',
       });
     }
   }
 );
-
-
 
 router.get('/profile/:id', async (req, res) => {
   try {

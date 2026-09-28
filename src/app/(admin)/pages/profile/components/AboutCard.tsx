@@ -3,7 +3,7 @@ import IconifyIcon from '@/components/wrappers/IconifyIcon'
 import { COMPANY } from '@/config/app'
 import small6 from '@/assets/images/small/img-6.jpg'
 import { resolveAvatar, handleAvatarError } from '@/helpers/avatar'
-import { Button, Card, CardBody, CardFooter, Col, Dropdown, DropdownItem, DropdownMenu, DropdownToggle, Row, Modal, Form, Badge } from 'react-bootstrap'
+import { Button, Card, CardBody, CardFooter, Col, Dropdown, DropdownItem, DropdownMenu, DropdownToggle, Row, Modal, Form, Badge, InputGroup } from 'react-bootstrap'
 import { useAuthContext } from '@/context/useAuthContext'
 import api from '@/helpers/api'
 import { toast } from 'react-toastify'
@@ -27,6 +27,12 @@ const AboutCard = () => {
   const [isEditing, setIsEditing] = useState(false)
   const [showPasswordModal, setShowPasswordModal] = useState(false)
   const [showEmailModal, setShowEmailModal] = useState(false)
+
+  // Password visibility states
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false)
+  const [showNewPassword, setShowNewPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: '',
     newPassword: '',
@@ -49,6 +55,10 @@ const AboutCard = () => {
       toast.success('🔒 Password changed successfully!')
       setShowPasswordModal(false)
       setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' })
+      // Reset visibility states
+      setShowCurrentPassword(false)
+      setShowNewPassword(false)
+      setShowConfirmPassword(false)
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Failed to change password')
     }
@@ -77,7 +87,6 @@ const AboutCard = () => {
     skills: '',
   })
 
- 
   useEffect(() => {
     const fetchProfile = async () => {
       const targetId = profileId || loggedInId
@@ -86,7 +95,6 @@ const AboutCard = () => {
         try {
           const response = await api.get(`/auth/profile/${targetId}`)
           setActiveUser(response.data)
-          // If viewing own profile, synchronize the local AuthContext session
           if (isSelf && saveSession) {
             saveSession({
               ...user,
@@ -108,7 +116,6 @@ const AboutCard = () => {
     fetchProfile()
   }, [profileId, loggedInId])
 
-  // Update formData when activeUser changes
   useEffect(() => {
     if (activeUser) {
       setFormData({
@@ -210,61 +217,57 @@ const AboutCard = () => {
       }
     }
     reader.readAsDataURL(file)
-    
   }
 
   const handleVerifyEmailPassword = async (password: string) => {
-  try {
-    const response = await api.post('/auth/verify-password', {
-      id: user?.id || user?._id || formData.id,
-      password,
-    })
-    return response.data?.success === true
-  } catch (error: any) {
-    if (error.response?.status === 401) {
-      return false
+    try {
+      const response = await api.post('/auth/verify-password', {
+        id: user?.id || user?._id || formData.id,
+        password,
+      })
+      return response.data?.success === true
+    } catch (error: any) {
+      if (error.response?.status === 401) {
+        return false
+      }
+      throw error
     }
-
-    throw error
   }
-}
 
-const handleEmailChange = async (newEmail: string) => {
-  try {
-    const response = await api.put('/auth/update-profile', {
-      id: user?.id || user?._id || formData.id,
-      email: newEmail,
-    })
-
-    toast.success(response.data?.message || 'Email changed successfully!')
-
-    if (isSelf && saveSession) {
-      saveSession({
-        ...user,
-        ...response.data.user,
+  const handleEmailChange = async (newEmail: string) => {
+    try {
+      const response = await api.put('/auth/update-profile', {
+        id: user?.id || user?._id || formData.id,
         email: newEmail,
-        token: user?.token || '',
-      } as any)
-    } else if (response.data?.user) {
-      setActiveUser(response.data.user)
+      })
+
+      toast.success(response.data?.message || 'Email changed successfully!')
+
+      if (isSelf && saveSession) {
+        saveSession({
+          ...user,
+          ...response.data.user,
+          email: newEmail,
+          token: user?.token || '',
+        } as any)
+      } else if (response.data?.user) {
+        setActiveUser(response.data.user)
+      }
+
+      setFormData((prev) => ({
+        ...prev,
+        email: newEmail,
+      }))
+    } catch (error: any) {
+      throw new Error(
+        error.response?.data?.message || 'Failed to change email'
+      )
     }
-
-    // Keep form data in sync
-    setFormData((prev) => ({
-      ...prev,
-      email: newEmail,
-    }))
-  } catch (error: any) {
-    throw new Error(
-      error.response?.data?.message || 'Failed to change email'
-    )
   }
-}
 
-const handleForgotPassword = () => {
-
-  window.location.href = '/forgot-password'
-}
+  const handleForgotPassword = () => {
+    window.location.href = '/forgot-password'
+  }
 
   const isElevated = isAdmin || user?.role === 'manager'
 
@@ -460,7 +463,7 @@ const handleForgotPassword = () => {
               </div>
 
               {isSelf && (
-                <div className="d-flex  gap-3 mt-3">
+                <div className="d-flex gap-3 mt-3">
                   <Button variant="outline-danger" size="sm" onClick={() => setShowPasswordModal(true)}>
                     <IconifyIcon icon="bx:key" className="me-1" />
                     Change Password
@@ -502,7 +505,8 @@ const handleForgotPassword = () => {
           )}
         </Row>
       </CardFooter>
-      {/* --- CHANGE PASSWORD MODAL --- */}
+
+      {/* --- CHANGE PASSWORD MODAL WITH EYE BUTTONS --- */}
       <Modal show={showPasswordModal} onHide={() => setShowPasswordModal(false)} centered>
         <Modal.Header closeButton className="bg-light">
           <Modal.Title className="fw-bold fs-16 text-dark">
@@ -512,29 +516,57 @@ const handleForgotPassword = () => {
         </Modal.Header>
         <Form onSubmit={handlePasswordChange}>
           <Modal.Body className="p-4">
+            {/* Current Password */}
             <Form.Group className="mb-3">
               <Form.Label className="fw-bold small text-muted text-uppercase">Current Password</Form.Label>
-              <Form.Control 
-                type="password" required 
-                value={passwordForm.currentPassword} 
-                onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
-              />
+              <InputGroup>
+                <Form.Control 
+                  type={showCurrentPassword ? 'text' : 'password'} 
+                  required 
+                  value={passwordForm.currentPassword} 
+                  onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
+                />
+                <Button 
+                  variant="outline-secondary" 
+                  type="button"
+                  onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                >
+                  <IconifyIcon icon={showCurrentPassword ? 'bx:hide' : 'bx:show'} />
+                </Button>
+              </InputGroup>
             </Form.Group>
+
+            {/* New Password */}
             <Form.Group className="mb-3">
               <Form.Label className="fw-bold small text-muted text-uppercase">New Password</Form.Label>
-              <Form.Control 
-                type="password" required 
-                value={passwordForm.newPassword} 
-                onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
-              />
+              <InputGroup>
+                <Form.Control 
+                  type={showNewPassword ? 'text' : 'password'} 
+                  required 
+                  value={passwordForm.newPassword} 
+                  onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                />
+              </InputGroup>
             </Form.Group>
+
+            {/* Confirm New Password */}
             <Form.Group className="mb-3">
               <Form.Label className="fw-bold small text-muted text-uppercase">Confirm New Password</Form.Label>
-              <Form.Control 
-                type="password" required 
-                value={passwordForm.confirmPassword} 
-                onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
-              />
+              <InputGroup>
+                <Form.Control 
+                  type={showConfirmPassword ? 'text' : 'password'} 
+                  required 
+                  value={passwordForm.confirmPassword} 
+                  onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+                />
+                <Button 
+                  variant="outline-secondary" 
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                >
+                  <IconifyIcon icon={showConfirmPassword ? 'bx:hide' : 'bx:show'} />
+                </Button>
+              </InputGroup>
             </Form.Group>
           </Modal.Body>
           <Modal.Footer className="bg-light">
@@ -549,13 +581,13 @@ const handleForgotPassword = () => {
       </Modal>
 
     </Card>
-   <EmailModal
-  show={showEmailModal}
-  onHide={() => setShowEmailModal(false)}
-  onVerifyPassword={handleVerifyEmailPassword}
-  onChangeEmail={handleEmailChange}
-  onForgotPassword={handleForgotPassword}
-/>
+    <EmailModal
+      show={showEmailModal}
+      onHide={() => setShowEmailModal(false)}
+      onVerifyPassword={handleVerifyEmailPassword}
+      onChangeEmail={handleEmailChange}
+      onForgotPassword={handleForgotPassword}
+    />
     </>
   )
 }

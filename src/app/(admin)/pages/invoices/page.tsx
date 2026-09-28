@@ -117,9 +117,9 @@ const InvoicesPage = () => {
           <p className="text-muted small mb-0">Professional billing for Hoftrix agency clients</p>
         </div>
         <div className="crm-page-actions">
-          <Button variant="outline-primary" className="rounded-pill" onClick={() => navigate('/pages/invoices/settings')}>
+          {/* <Button variant="outline-primary" className="rounded-pill" onClick={() => navigate('/pages/invoices/settings')}>
             <IconifyIcon icon="bx:cog" className="me-1" /> Branding
-          </Button>
+          </Button> */}
           <Button variant="primary" className="rounded-pill px-4 fw-bold" onClick={() => navigate('/pages/invoices/new')}>
             <IconifyIcon icon="bx:plus" className="me-1" /> New Invoice
           </Button>

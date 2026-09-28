@@ -35,12 +35,12 @@ export const MENU_ITEMS: MenuItemType[] = [
     label: 'Deals Pipeline',
     url: '/pages/deals',
   },
-  {
-    key: 'mgmt-followups',
-    icon: 'iconamoon:clock-duotone',
-    label: 'Follow Ups',
-    url: '/pages/follow-ups',
-  },
+  // {
+  //   key: 'mgmt-followups',
+  //   icon: 'iconamoon:clock-duotone',
+  //   label: 'Follow Ups',
+  //   url: '/pages/follow-ups',
+  // },
   {
     key: 'mgmt-activity-logs',
     icon: 'iconamoon:history-duotone',

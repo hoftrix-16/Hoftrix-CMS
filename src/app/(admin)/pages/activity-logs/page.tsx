@@ -71,7 +71,7 @@ const ActivityLogsPage = () => {
   })
 
   return (
-    <div className="p-4">
+    <div className="">
       <Row className="align-items-center mb-4">
         <Col>
           <h3 className="fw-bold text-dark text-uppercase m-0">Activity History</h3>
