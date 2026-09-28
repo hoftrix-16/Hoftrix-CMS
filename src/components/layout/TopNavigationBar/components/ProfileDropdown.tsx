@@ -3,6 +3,7 @@ import { Dropdown, DropdownDivider, DropdownHeader, DropdownItem, DropdownMenu, 
 import IconifyIcon from '@/components/wrappers/IconifyIcon'
 import { useAuthContext } from '@/context/useAuthContext'
 import { resolveAvatar, handleAvatarError } from '@/helpers/avatar'
+import { Settings } from 'lucide-react'
 
 const ProfileDropdown = () => {
   const { user, removeSession } = useAuthContext()
@@ -45,6 +46,10 @@ const ProfileDropdown = () => {
         <DropdownItem as={Link} to="/pages/calendar">
           <IconifyIcon icon="bx:calendar" className="text-muted fs-18 align-middle me-1" />
           <span className="align-middle">Calendar</span>
+        </DropdownItem>
+         <DropdownItem as={Link} to="/pages/setting">
+          <Settings className='text-muted align-middle me-1' style={{ width: '18px', height: '18px' }} />
+          <span className="align-middle">Settings</span>
         </DropdownItem>
         <DropdownDivider className="dropdown-divider my-1" />
         <DropdownItem as="button" className="text-danger dropdown-item" onClick={removeSession}>

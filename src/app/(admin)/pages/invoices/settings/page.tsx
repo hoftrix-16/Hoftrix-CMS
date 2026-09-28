@@ -140,10 +140,7 @@ const InvoiceSettingsPage = () => {
   }
 
   return (
-    <div className="p-4">
-      <Button variant="link" className="text-muted p-0 mb-2" onClick={() => navigate('/pages/invoices')}>
-        ← Back to invoices
-      </Button>
+    <div className="">
       <h3 className="fw-bold mb-1">Invoice Branding</h3>
       <p className="text-muted small mb-4">
         Set once. Logo, signature, and company details apply automatically to every invoice.

@@ -395,6 +395,118 @@ router.delete('/leads/:id', async (req, res) => {
   } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
+
+router.post('/leads/import', async (req, res) => {
+  try {
+    const { leads, userId, userName } = req.body;
+
+    // Check data
+    if (!Array.isArray(leads) || leads.length === 0) {
+      return res.status(400).json({
+        message: 'No leads data provided for import',
+      });
+    }
+
+    // Convert imported data according to Lead schema
+    const leadsToInsert = leads.map((lead) => ({
+      name: String(
+        lead.Name ??
+        lead.name ??
+        ''
+      ).trim(),
+
+      email: String(
+        lead.Email ??
+        lead.email ??
+        ''
+      ).trim(),
+
+      phone: String(
+        lead.Phone ??
+        lead.phone ??
+        ''
+      ).trim(),
+
+      source: String(
+        lead.Source ??
+        lead.source ??
+        'Website'
+      ).trim(),
+
+      status:
+        lead.Status ??
+        lead.status ??
+        'New',
+
+      notes: String(
+        lead.Notes ??
+        lead.notes ??
+        ''
+      ).trim(),
+    }));
+
+    // Validate names
+    const invalidLeads = leadsToInsert.filter(
+      (lead) => !lead.name
+    );
+
+    if (invalidLeads.length > 0) {
+      return res.status(400).json({
+        message: 'Some imported leads are missing Name',
+      });
+    }
+
+    // Validate status
+    const validStatuses = [
+      'New',
+      'Contacted',
+      'Interested',
+      'Closed',
+      'Lost',
+    ];
+
+    const invalidStatus = leadsToInsert.find(
+      (lead) => !validStatuses.includes(lead.status)
+    );
+
+    if (invalidStatus) {
+      return res.status(400).json({
+        message: `Invalid status "${invalidStatus.status}". Valid statuses are: ${validStatuses.join(', ')}`,
+      });
+    }
+
+    // Bulk insert
+    const insertedLeads = await Lead.insertMany(
+      leadsToInsert
+    );
+
+    // Activity log
+    await logActivity(
+      userId || null,
+      userName || 'System',
+      'Leads Imported',
+      `${insertedLeads.length} CRM leads imported successfully`,
+      'success'
+    );
+
+    return res.status(201).json({
+      message: 'Leads imported successfully',
+      count: insertedLeads.length,
+      leads: insertedLeads,
+    });
+
+  } catch (err) {
+    console.error('Lead import error:', err);
+
+    return res.status(500).json({
+      message:
+        err.message || 'Failed to import leads',
+    });
+  }
+});
+
+
+
 // --- EMPLOYEES ---
 router.get('/employees', async (req, res) => {
   try {
@@ -420,26 +532,44 @@ router.get('/employees', async (req, res) => {
 
 router.post('/employees', async (req, res) => {
   try {
+    const password = String(req.body?.password || '').trim();
+
     const newEmployee = new Employee(req.body);
     await newEmployee.save();
 
-    // Auto-generate Auth User credential for Employee
+    // Auto-create Auth User account for Employee
     if (newEmployee.email) {
-      const existingUser = await User.findOne({ email: newEmployee.email.toLowerCase() });
-      if (!existingUser) {
-        const defaultPassword = getDefaultEmployeePassword();
-        const newUser = new User({
-          name: newEmployee.name,
-          email: newEmployee.email.toLowerCase(),
-          phone: newEmployee.phone || '',
-          password: defaultPassword,
-          role: 'employee',
-          designation: newEmployee.designation || '',
-          avatar: newEmployee.avatar || getDefaultAvatar(newEmployee.name)
+      if (!password) {
+        return res.status(400).json({
+          message: 'Password is required for employee login'
         });
-        await newUser.save();
-        console.log(`🔑 Auth User account automatically created for employee ${newEmployee.email}`);
       }
+
+      const email = newEmployee.email.toLowerCase();
+
+      const existingUser = await User.findOne({ email });
+
+      if (existingUser) {
+        return res.status(400).json({
+          message: 'A user account already exists with this email'
+        });
+      }
+
+      const newUser = new User({
+        name: newEmployee.name,
+        email,
+        phone: newEmployee.phone || '',
+        password,
+        role: 'employee',
+        designation: newEmployee.designation || '',
+        avatar: newEmployee.avatar || getDefaultAvatar(newEmployee.name)
+      });
+
+      await newUser.save();
+
+      console.log(
+        `🔑 Auth User account automatically created for employee ${email}`
+      );
     }
 
     // Log Activity
@@ -456,11 +586,17 @@ router.post('/employees', async (req, res) => {
       loginHint: newEmployee.email
         ? {
             email: newEmployee.email.toLowerCase(),
-            note: 'Use DEFAULT_EMPLOYEE_PASSWORD from server env for first login, then change from Profile.',
+            note: 'Employee can login using the password created during registration.'
           }
-        : null,
+        : null
     });
-  } catch (err) { res.status(400).json({ message: err.message }); }
+  } catch (err) {
+    console.error('Employee Registration Error:', err);
+
+    res.status(400).json({
+      message: err.message
+    });
+  }
 });
 
 router.put('/employees/:id', async (req, res) => {

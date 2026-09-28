@@ -26,9 +26,6 @@ const LoginForm = () => {
         id="password-id"
         label={
           <>
-            <Link to="/auth/reset-pass" className="float-end ms-1 fw-semibold text-decoration-none" style={{ color: '#FF4D00', fontSize: '0.8125rem' }}>
-              Reset password
-            </Link>
             <label className="form-label" htmlFor="example-password">
               Password
             </label>
