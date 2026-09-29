@@ -1,6 +1,5 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { Button, Card, Col, Form, Row, Spinner } from 'react-bootstrap'
 import api from '@/helpers/api'
 import { toast } from 'react-toastify'
@@ -8,7 +7,6 @@ import type { CompanySettings } from '@/types/invoice'
 import { DEFAULT_NOTES, DEFAULT_TERMS } from '@/types/invoice'
 
 const InvoiceSettingsPage = () => {
-  const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [drawing, setDrawing] = useState(false)

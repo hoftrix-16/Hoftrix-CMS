@@ -14,16 +14,25 @@ const SocialMediaConfig = () => {
       { id: Date.now(), platform: 'Facebook', url: '' }
     ]);
   };
+const handleRemoveLink = (id: number) => {
+  setSocialLinks(
+    socialLinks.filter(item => item.id !== id)
+  );
+};
 
-  const handleRemoveLink = (id) => {
-    setSocialLinks(socialLinks.filter(item => item.id !== id));
-  };
-
-  const handleChange = (id, field, value) => {
-    setSocialLinks(
-      socialLinks.map(item => item.id === id ? { ...item, [field]: value } : item)
-    );
-  };
+const handleChange = (
+  id: number,
+  field: 'platform' | 'url',
+  value: string
+) => {
+  setSocialLinks(
+    socialLinks.map(item =>
+      item.id === id
+        ? { ...item, [field]: value }
+        : item
+    )
+  );
+};
 
   return (
     <div className="container-fluid text-white p-4" style={{ backgroundColor: '#0b0f19', minHeight: '100vh' }}>

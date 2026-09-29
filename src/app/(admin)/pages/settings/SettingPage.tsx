@@ -1,7 +1,6 @@
 import { useState } from "react";
 import SettingsNav from "@/components/settings/SettingsNav";
 import InvoiceSettingsPage from "@/app/(admin)/pages/invoices/settings/page";
-import InvoiceBuilderPage from "../invoices/builder/page";
 import ActivityLogsPage from "../activity-logs/page";
 import SocialMediaConfig from "../socialMedia/SocialMedia";
 import LegalConfig from "../legal/LegalPage";
