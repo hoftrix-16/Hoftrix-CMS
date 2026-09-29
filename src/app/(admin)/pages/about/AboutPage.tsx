@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
+import type { MouseEvent } from 'react';
 import { Info, Save, Building, Mail, Phone, MapPin } from 'lucide-react';
 
 const AboutConfig = () => {
@@ -12,17 +13,17 @@ const AboutConfig = () => {
   description: 'Hoftrix is a next-gen Web Development & Digital Marketing Agency committed to helping businesses grow. We combine smart UI/UX design, clean development, AI-powered SEO, and performance-driven marketing to build digital experiences that scale, convert, and stand out.'
 });
 
-  const handleChange = (field, value) => {
+  const handleChange = (field: string, value: string) => {
     setAboutData(prev => ({
       ...prev,
       [field]: value
     }));
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    console.log('Saved About Data:', aboutData);
-  };
+ const handleSubmit = (e: MouseEvent<HTMLButtonElement>) => {
+  e.preventDefault();
+  console.log('Saved About Data:', aboutData);
+};
 
   return (
     <div className="container-fluid text-white p-4" style={{ backgroundColor: '#0b0f19', minHeight: '100vh' }}>
