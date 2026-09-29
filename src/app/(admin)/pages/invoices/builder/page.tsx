@@ -81,11 +81,22 @@ const validationSchema = Yup.object().shape({
     }
   ),
     address: Yup.string().max(500, 'Address is too long'),
-    gstin: Yup.string()
-      .trim()
-      .transform((value) => (value === '' ? null : value))
-      .nullable()
-      .matches(gstinRegex, 'Enter a valid GSTIN format (e.g. 22AAAAA0000A1Z5)'),
+   gstin: Yup.string()
+  .trim()
+  .nullable()
+  .test(
+    'valid-gstin',
+    'Enter a valid GSTIN format or N/A',
+    (value) => {
+      if (!value) return true
+
+      const normalized = value.trim().toUpperCase()
+
+      if (normalized === 'N/A') return true
+
+      return gstinRegex.test(normalized)
+    }
+  ),
   }),
 
   items: Yup.array()
