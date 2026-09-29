@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Scale, Plus, Trash2, FileText } from 'lucide-react';
+import { Scale, Plus, Trash2} from 'lucide-react';
 
 const LegalConfig = () => {
   const [legalDocs, setLegalDocs] = useState([
@@ -15,15 +15,23 @@ const LegalConfig = () => {
     ]);
   };
 
-  const handleRemoveDoc = (id) => {
-    setLegalDocs(legalDocs.filter(item => item.id !== id));
-  };
+ const handleRemoveDoc = (id: number) => {
+  setLegalDocs(legalDocs.filter(item => item.id !== id));
+};
 
-  const handleChange = (id, field, value) => {
-    setLegalDocs(
-      legalDocs.map(item => item.id === id ? { ...item, [field]: value } : item)
-    );
-  };
+const handleChange = (
+  id: number,
+  field: 'type' | 'url',
+  value: string
+) => {
+  setLegalDocs(
+    legalDocs.map(item =>
+      item.id === id
+        ? { ...item, [field]: value }
+        : item
+    )
+  );
+};
 
   return (
     <div className="container-fluid text-white p-4" style={{ backgroundColor: '#0b0f19', minHeight: '100vh' }}>
