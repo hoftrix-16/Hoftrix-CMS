@@ -1,3 +1,33 @@
+const PHONE_REGEX = /^\+[1-9]\d{0,3}-\d{4,14}$/;
+
+function normalizePhone(phone) {
+  if (phone === null || phone === undefined) {
+    return '';
+  }
+
+  const value = String(phone).trim();
+
+  if (!value) {
+    return '';
+  }
+
+  const canonicalMatch = value.match(/^\+([1-9]\d{0,3})-(\d+)$/);
+
+  if (canonicalMatch) {
+    return `+${canonicalMatch[1]}-${canonicalMatch[2]}`;
+  }
+
+  const spacedMatch = value.match(/^\+([1-9]\d{0,3})\s+(\d+)$/);
+
+  if (spacedMatch) {
+    return `+${spacedMatch[1]}-${spacedMatch[2]}`;
+  }
+
+  return value;
+}
+
+
+
 const INVOICE_PREFIX = 'INV-HTF-';
 
 function normalizeStatus(status) {
@@ -122,25 +152,49 @@ function sanitizeInvoicePayload(body) {
   if (!data.customClientName && data.billTo?.companyName) {
     data.customClientName = data.billTo.companyName;
   }
+  if (data.billTo?.phone) {
+  const normalizedPhone = normalizePhone(data.billTo.phone);
+
+  if (!PHONE_REGEX.test(normalizedPhone)) {
+    throw new Error('Invalid bill-to phone number');
+  }
+
+  data.billTo.phone = normalizedPhone;
+}
 
   return data;
 }
 
-async function getNextInvoiceNumber(Invoice) {
-  const latest = await Invoice.find({ invoiceNumber: new RegExp(`^${INVOICE_PREFIX}`) })
+async function getNextInvoiceNumber(Invoice, invoiceDate = new Date()) {
+  const latest = await Invoice.find({
+    invoiceNumber: new RegExp(`^${INVOICE_PREFIX}-\\d{2}-\\d{2}-\\d+$`),
+  })
     .sort({ createdAt: -1 })
-    .limit(50)
+    .limit(100)
     .select('invoiceNumber');
 
   let max = 0;
+
   latest.forEach((inv) => {
-    const suffix = String(inv.invoiceNumber || '').replace(INVOICE_PREFIX, '');
-    const num = parseInt(suffix, 10);
-    if (!Number.isNaN(num) && num > max) max = num;
+    const match = String(inv.invoiceNumber || '').match(/-(\d+)$/);
+
+    if (match) {
+      const num = parseInt(match[1], 10);
+
+      if (!Number.isNaN(num) && num > max) {
+        max = num;
+      }
+    }
   });
 
-  const next = String(max + 1).padStart(4, '0');
-  return `${INVOICE_PREFIX}${next}`;
+  const date = new Date(invoiceDate);
+
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = String(date.getFullYear()).slice(-2);
+
+  const sequence = String(max + 1).padStart(3, '0');
+
+  return `${INVOICE_PREFIX}-${month}-${year}-${sequence}`;
 }
 
 function buildInvoiceStats(invoices) {
