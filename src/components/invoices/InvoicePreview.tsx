@@ -26,7 +26,8 @@ const InvoicePreview = ({ invoice, companySettings, id = 'invoice-a4-preview', s
       className="invoice-a4-paper"
       style={{
         width: '210mm',
-       height: '297mm',
+     minHeight: '297mm',
+height: 'auto',
         margin: '0 auto',
         background: '#fff',
         color: '#111827',

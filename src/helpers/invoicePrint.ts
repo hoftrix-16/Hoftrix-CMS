@@ -44,7 +44,7 @@ export async function downloadInvoicePdf(
     throw new Error('Invoice preview not found')
   }
 
-  // Wait for images (logo/signature) to load
+  // Wait for logo/signature images
   const images = Array.from(el.querySelectorAll('img'))
 
   await Promise.all(
@@ -62,17 +62,22 @@ export async function downloadInvoicePdf(
     )
   )
 
+  // Give browser a moment to finish layout/fonts
+  await new Promise((resolve) => setTimeout(resolve, 100))
+
   const canvas = await html2canvas(el, {
     scale: 2,
     useCORS: true,
     allowTaint: false,
     backgroundColor: '#ffffff',
     logging: false,
-    imageTimeout: 15000,
+
+    // Important: use actual rendered element size
+    width: el.offsetWidth,
+    height: el.offsetHeight,
+
     scrollX: 0,
     scrollY: 0,
-    windowWidth: el.scrollWidth,
-    windowHeight: el.scrollHeight,
   })
 
   const pdf = new jsPDF({
@@ -85,39 +90,82 @@ export async function downloadInvoicePdf(
   const pageWidth = pdf.internal.pageSize.getWidth()
   const pageHeight = pdf.internal.pageSize.getHeight()
 
-  const canvasWidth = canvas.width
-  const canvasHeight = canvas.height
+  const margin = 8
+  const usableWidth = pageWidth - margin * 2
+  const usableHeight = pageHeight - margin * 2
 
-  /*
-   * Fit the COMPLETE invoice inside ONE A4 page.
-   * This prevents:
-   * - black horizontal strip
-   * - unwanted second page
-   * - content being cut
-   */
-  const scale = Math.min(
-    pageWidth / canvasWidth,
-    pageHeight / canvasHeight
+  const pxPerMm = canvas.width / usableWidth
+
+  const pageHeightPx = Math.floor(
+    usableHeight * pxPerMm
   )
 
-  const imgWidth = canvasWidth * scale
-  const imgHeight = canvasHeight * scale
+  let sourceY = 0
+  let pageIndex = 0
 
-  const x = (pageWidth - imgWidth) / 2
-  const y = (pageHeight - imgHeight) / 2
+  while (sourceY < canvas.height) {
+    const currentHeight = Math.min(
+      pageHeightPx,
+      canvas.height - sourceY
+    )
 
-  const imgData = canvas.toDataURL('image/jpeg', 0.95)
+    const pageCanvas = document.createElement('canvas')
 
-  pdf.addImage(
-    imgData,
-    'JPEG',
-    x,
-    y,
-    imgWidth,
-    imgHeight,
-    undefined,
-    'FAST'
-  )
+    pageCanvas.width = canvas.width
+    pageCanvas.height = currentHeight
+
+    const ctx = pageCanvas.getContext('2d')
+
+    if (!ctx) {
+      throw new Error('Unable to create PDF canvas')
+    }
+
+    ctx.fillStyle = '#ffffff'
+    ctx.fillRect(
+      0,
+      0,
+      pageCanvas.width,
+      pageCanvas.height
+    )
+
+    ctx.drawImage(
+      canvas,
+      0,
+      sourceY,
+      canvas.width,
+      currentHeight,
+      0,
+      0,
+      pageCanvas.width,
+      currentHeight
+    )
+
+    const pageImage = pageCanvas.toDataURL(
+      'image/jpeg',
+      0.95
+    )
+
+    if (pageIndex > 0) {
+      pdf.addPage()
+    }
+
+    const renderedHeight =
+      currentHeight / pxPerMm
+
+    pdf.addImage(
+      pageImage,
+      'JPEG',
+      margin,
+      margin,
+      usableWidth,
+      renderedHeight,
+      undefined,
+      'FAST'
+    )
+
+    sourceY += currentHeight
+    pageIndex++
+  }
 
   pdf.save(filename)
 }
