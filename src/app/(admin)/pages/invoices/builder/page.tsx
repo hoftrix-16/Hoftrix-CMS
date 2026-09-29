@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams, useLocation, useSearchParams } from 'react-router-dom'
-import { Button, Card, Col, Form, InputGroup, Row, Spinner, Table } from 'react-bootstrap'
+import { Button, Card, Col, Form, Row, Spinner, Table } from 'react-bootstrap'
 import { useFormik, FieldArray, FormikProvider } from 'formik'
 import * as Yup from 'yup'
 import api from '@/helpers/api'
@@ -674,10 +674,12 @@ if (nextRes?.data?.invoiceNumber) {
                             countryCodeEditable={false}
                             value={values.billTo.phone.replace(/\D/g, '')}
                             onChange={(value, country) => {
-                              const dialCode =
-                                typeof country === 'object' && country !== null
-                                  ? String(country.dialCode || '')
-                                  : ''
+                            const dialCode =
+  country &&
+  typeof country === 'object' &&
+  'dialCode' in country
+    ? String(country.dialCode || '')
+    : ''
 
                               if (dialCode) {
                                 setPhoneDialCode(dialCode)

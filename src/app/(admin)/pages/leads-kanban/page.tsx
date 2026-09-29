@@ -18,7 +18,7 @@ import { useAuthContext } from '@/context/useAuthContext'
 import ImportExport from '../../../../components/importExport/ImportExport'
 import { ImportExportColumn } from '@/utils/importExport'
 
-interface Lead {
+interface Lead extends Record<string, unknown> {
   _id: string
   name: string
   email?: string
