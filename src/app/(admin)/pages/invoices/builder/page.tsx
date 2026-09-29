@@ -19,6 +19,8 @@ import {
   type InvoiceLineItem,
   type InvoiceStatus,
 } from '@/types/invoice'
+import PhoneInput from 'react-phone-input-2'
+import 'react-phone-input-2/lib/style.css'
 
 const emptyItem = (): InvoiceLineItem => ({
   description: '',
@@ -38,9 +40,11 @@ const emptyBillTo = (): InvoiceBillTo => ({
   gstin: '',
 })
 
+
+
 // Regex Validations
 const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
-const phoneRegex = /^[+]?[(]?[0-9]{1,4}[)]?[-\s./0-9]*$/
+const phoneRegex = /^\d{7,18}$/
 const gstinRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/
 
 // Yup Validation Schema
@@ -61,11 +65,21 @@ const validationSchema = Yup.object().shape({
       .transform((value) => (value === '' ? null : value))
       .nullable()
       .matches(emailRegex, 'Enter a valid email address'),
-    phone: Yup.string()
-      .trim()
-      .transform((value) => (value === '' ? null : value))
-      .nullable()
-      .matches(phoneRegex, 'Enter a valid phone number'),
+  phone: Yup.string()
+  .trim()
+  .nullable()
+  .test(
+    'valid-phone',
+    'Enter a valid phone number',
+    (value) => {
+      if (!value) {
+        return true
+      }
+
+      const digits = value.replace(/\D/g, '')
+      return phoneRegex.test(digits)
+    }
+  ),
     address: Yup.string().max(500, 'Address is too long'),
     gstin: Yup.string()
       .trim()
@@ -114,7 +128,7 @@ const InvoiceBuilderPage = () => {
   const isEdit = Boolean(id) && location.pathname.endsWith('/edit')
   const isNew = location.pathname.endsWith('/new') || !id
   const prefillClientId = searchParams.get('clientId') || ''
-
+const [phoneDialCode, setPhoneDialCode] = useState('91')
   const [loading, setLoading] = useState(!isNew)
   const [saving, setSaving] = useState(false)
   const [companySettings, setCompanySettings] = useState<CompanySettings | null>(null)
@@ -145,11 +159,29 @@ const InvoiceBuilderPage = () => {
       )
       const paidAmount = values.status === 'Paid' ? computed.totalAmount : values.amountPaid
 
+      const phoneDigits = values.billTo.phone.replace(/\D/g, '')
+      const dialCodeDigits = phoneDialCode.replace(/\D/g, '')
+
+      let formattedPhone = ''
+
+      if (phoneDigits && dialCodeDigits) {
+        const mobileNumber = phoneDigits.startsWith(dialCodeDigits)
+          ? phoneDigits.slice(dialCodeDigits.length)
+          : phoneDigits
+
+        if (mobileNumber) {
+          formattedPhone = `+${dialCodeDigits}-${mobileNumber}`
+        }
+      }
+
       const payload: any = {
-        invoiceNumber: INVOICE_PREFIX + values.invoiceIdNumber.trim(),
+        invoiceNumber: values.invoiceIdNumber.trim(),
         client: selectedClientId || undefined,
         customClientName: values.billTo.companyName,
-        billTo: values.billTo,
+        billTo: {
+          ...values.billTo,
+          phone: formattedPhone,
+        },
         subject: values.subject,
         invoiceDate: values.invoiceDate,
         dueDate: values.dueDate || undefined,
@@ -217,12 +249,11 @@ const InvoiceBuilderPage = () => {
         const settings = settingsRes.data
         setCompanySettings(settings)
 
-        let nextInvNum = ''
-        if (nextRes?.data?.invoiceNumber) {
-          const full = nextRes.data.invoiceNumber as string
-          nextInvNum = full.startsWith(INVOICE_PREFIX) ? full.slice(INVOICE_PREFIX.length) : full
-        }
+      let nextInvNum = ''
 
+if (nextRes?.data?.invoiceNumber) {
+  nextInvNum = nextRes.data.invoiceNumber as string
+}
         let prefilledBillTo = emptyBillTo()
         if (isNew && prefillClientId) {
           try {
@@ -360,6 +391,73 @@ const InvoiceBuilderPage = () => {
             box-shadow: 0 16px 48px rgba(0,0,0,0.5);
             flex-shrink: 0;
           }
+
+          /* Phone input dark theme */
+          #invoice-builder .react-tel-input {
+            width: 100%;
+          }
+
+          #invoice-builder .react-tel-input .form-control {
+            width: 100%;
+            height: 42px;
+            background: #1f2937 !important;
+            color: #f8fafc !important;
+            border: 1px solid #374151 !important;
+            border-radius: 6px !important;
+          }
+
+          #invoice-builder .react-tel-input .form-control:focus {
+            border-color: #0ea5e9 !important;
+            box-shadow: 0 0 0 1px #0ea5e9 !important;
+          }
+
+          #invoice-builder .react-tel-input .flag-dropdown {
+            background: #1f2937 !important;
+            border: 1px solid #374151 !important;
+            border-radius: 6px 0 0 6px !important;
+          }
+
+          #invoice-builder .react-tel-input .selected-flag:hover,
+          #invoice-builder .react-tel-input .selected-flag:focus {
+            background: #374151 !important;
+          }
+
+          #invoice-builder .react-tel-input .country-list {
+            background: #111827 !important;
+            color: #f8fafc !important;
+            border: 1px solid #374151 !important;
+            z-index: 9999 !important;
+          }
+
+          #invoice-builder .react-tel-input .country-list .country {
+            color: #e5e7eb !important;
+            background: #111827 !important;
+          }
+
+          #invoice-builder .react-tel-input .country-list .country:hover,
+          #invoice-builder .react-tel-input .country-list .country.highlight {
+            background: #1f2937 !important;
+            color: #fff !important;
+          }
+
+          #invoice-builder .react-tel-input .country-list .dial-code {
+            color: #94a3b8 !important;
+          }
+
+          #invoice-builder .react-tel-input .country-list .search {
+            background: #111827 !important;
+          }
+
+          #invoice-builder .react-tel-input .country-list .search-box {
+            background: #1f2937 !important;
+            color: #f8fafc !important;
+            border: 1px solid #374151 !important;
+          }
+
+          #invoice-builder .react-tel-input .country-list .search-box::placeholder {
+            color: #94a3b8 !important;
+          }
+
           @media (max-width: 767.98px) {
             #invoice-builder { padding: 0.75rem !important; }
           }
@@ -409,25 +507,22 @@ const InvoiceBuilderPage = () => {
                           <Form.Label className="small fw-bold text-uppercase text-muted">
                             Invoice Number *
                           </Form.Label>
-                          <InputGroup hasValidation>
-                            <InputGroup.Text
-                              className="fw-bold border-end-0"
-                              style={{ color: '#FF4D00', background: 'transparent' }}
-                            >
-                              {INVOICE_PREFIX}
-                            </InputGroup.Text>
-                            <Form.Control
-                              name="invoiceIdNumber"
-                              className="border-start-0 ps-0"
-                              value={values.invoiceIdNumber}
-                              onChange={handleChange}
-                              onBlur={handleBlur}
-                              isInvalid={touched.invoiceIdNumber && !!errors.invoiceIdNumber}
-                            />
-                            <Form.Control.Feedback type="invalid">
-                              {errors.invoiceIdNumber}
-                            </Form.Control.Feedback>
-                          </InputGroup>
+                        <Form.Control
+  name="invoiceIdNumber"
+  value={values.invoiceIdNumber}
+  readOnly
+  className="fw-bold"
+  style={{
+    color: '#FF4D00',
+    background: 'rgba(255, 77, 0, 0.05)',
+    borderColor: '#FF4D00',
+  }}
+  isInvalid={touched.invoiceIdNumber && !!errors.invoiceIdNumber}
+/>
+
+<Form.Control.Feedback type="invalid">
+  {errors.invoiceIdNumber}
+</Form.Control.Feedback>
                         </Form.Group>
                       </Col>
 
@@ -567,21 +662,57 @@ const InvoiceBuilderPage = () => {
                       </Col>
 
                       <Col md={6}>
-                        <Form.Group className="mb-3">
-                          <Form.Label className="small text-muted">Phone</Form.Label>
-                          <Form.Control
-                            type="text"
-                            name="billTo.phone"
-                            placeholder="+91 9876543210"
-                            value={values.billTo.phone}
-                            onChange={handleChange}
-                            onBlur={handleBlur}
-                            isInvalid={touched.billTo?.phone && !!errors.billTo?.phone}
+                       <Form.Group className="mb-3">
+  <Form.Label className="small text-muted">
+    Phone
+  </Form.Label>
+
+  <PhoneInput
+                            country="in"
+                            enableSearch
+                            searchPlaceholder="Search country..."
+                            countryCodeEditable={false}
+                            value={values.billTo.phone.replace(/\D/g, '')}
+                            onChange={(value, country) => {
+                              const dialCode =
+                                typeof country === 'object' && country !== null
+                                  ? String(country.dialCode || '')
+                                  : ''
+
+                              if (dialCode) {
+                                setPhoneDialCode(dialCode)
+                              }
+
+                              setFieldValue('billTo.phone', value)
+                            }}
+                            inputProps={{
+                              name: 'billTo.phone',
+                              type: 'tel',
+                              autoComplete: 'tel',
+                              inputMode: 'tel',
+                            }}
+                            containerStyle={{ width: '100%' }}
+                            inputStyle={{
+                              width: '100%',
+                              height: '42px',
+                              background: '#1f2937',
+                              color: '#f8fafc',
+                              border: '1px solid #374151',
+                              borderRadius: '6px',
+                            }}
+                            buttonStyle={{
+                              background: '#1f2937',
+                              border: '1px solid #374151',
+                              borderRight: 0,
+                              borderRadius: '6px 0 0 6px',
+                            }}
                           />
-                          <Form.Control.Feedback type="invalid">
-                            {errors.billTo?.phone}
-                          </Form.Control.Feedback>
-                        </Form.Group>
+  {touched.billTo?.phone && errors.billTo?.phone && (
+    <div className="text-danger small mt-1">
+      {errors.billTo.phone}
+    </div>
+  )}
+</Form.Group>
                       </Col>
 
                       <Col md={8}>

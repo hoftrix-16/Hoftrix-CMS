@@ -34,36 +34,90 @@ export async function printInvoiceFromElement(elementId = 'invoice-a4-preview') 
 }
 
 /** Download PDF from the A4 preview DOM */
-export async function downloadInvoicePdf(elementId = 'invoice-a4-preview', filename = 'invoice.pdf') {
+export async function downloadInvoicePdf(
+  elementId = 'invoice-a4-preview',
+  filename = 'invoice.pdf'
+) {
   const el = document.getElementById(elementId)
-  if (!el) throw new Error('Invoice preview not found')
+
+  if (!el) {
+    throw new Error('Invoice preview not found')
+  }
+
+  // Wait for images (logo/signature) to load
+  const images = Array.from(el.querySelectorAll('img'))
+
+  await Promise.all(
+    images.map(
+      (img) =>
+        new Promise<void>((resolve) => {
+          if (img.complete) {
+            resolve()
+            return
+          }
+
+          img.onload = () => resolve()
+          img.onerror = () => resolve()
+        })
+    )
+  )
 
   const canvas = await html2canvas(el, {
     scale: 2,
     useCORS: true,
+    allowTaint: false,
     backgroundColor: '#ffffff',
     logging: false,
+    imageTimeout: 15000,
+    scrollX: 0,
+    scrollY: 0,
+    windowWidth: el.scrollWidth,
+    windowHeight: el.scrollHeight,
   })
 
-  const imgData = canvas.toDataURL('image/png')
-  const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+  const pdf = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4',
+    compress: true,
+  })
+
   const pageWidth = pdf.internal.pageSize.getWidth()
   const pageHeight = pdf.internal.pageSize.getHeight()
-  const imgWidth = pageWidth
-  const imgHeight = (canvas.height * imgWidth) / canvas.width
 
-  let heightLeft = imgHeight
-  let position = 0
+  const canvasWidth = canvas.width
+  const canvasHeight = canvas.height
 
-  pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
-  heightLeft -= pageHeight
+  /*
+   * Fit the COMPLETE invoice inside ONE A4 page.
+   * This prevents:
+   * - black horizontal strip
+   * - unwanted second page
+   * - content being cut
+   */
+  const scale = Math.min(
+    pageWidth / canvasWidth,
+    pageHeight / canvasHeight
+  )
 
-  while (heightLeft > 0) {
-    position -= pageHeight
-    pdf.addPage()
-    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
-    heightLeft -= pageHeight
-  }
+  const imgWidth = canvasWidth * scale
+  const imgHeight = canvasHeight * scale
+
+  const x = (pageWidth - imgWidth) / 2
+  const y = (pageHeight - imgHeight) / 2
+
+  const imgData = canvas.toDataURL('image/jpeg', 0.95)
+
+  pdf.addImage(
+    imgData,
+    'JPEG',
+    x,
+    y,
+    imgWidth,
+    imgHeight,
+    undefined,
+    'FAST'
+  )
 
   pdf.save(filename)
 }

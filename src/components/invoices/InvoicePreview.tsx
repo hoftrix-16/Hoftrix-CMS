@@ -26,7 +26,7 @@ const InvoicePreview = ({ invoice, companySettings, id = 'invoice-a4-preview', s
       className="invoice-a4-paper"
       style={{
         width: '210mm',
-        minHeight: '297mm',
+       height: '297mm',
         margin: '0 auto',
         background: '#fff',
         color: '#111827',
@@ -39,7 +39,19 @@ const InvoicePreview = ({ invoice, companySettings, id = 'invoice-a4-preview', s
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28 }}>
         <div>
           {logoUrl ? (
-            <img src={logoUrl} alt="Logo" style={{ height: logoSize, maxWidth: 180, objectFit: 'contain' }} />
+           <img
+  src={logoUrl}
+  alt="Logo"
+  style={{
+    height: logoSize,
+    width: 'auto',
+    maxWidth: 180,
+    maxHeight: logoSize,
+    objectFit: 'contain',
+    objectPosition: 'left center',
+    display: 'block',
+  }}
+/>
           ) : (
             <div style={{ fontSize: 22, fontWeight: 800, color: accent, letterSpacing: 0.5 }}>
               {company.brandName}

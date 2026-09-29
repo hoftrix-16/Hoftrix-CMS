@@ -155,9 +155,24 @@ router.get('/invoices/:id', async (req, res) => {
 router.post('/invoices', async (req, res) => {
   try {
     const invoiceData = sanitizeInvoicePayload(req.body);
-    if (!invoiceData.client && !invoiceData.customClientName && !invoiceData.billTo?.companyName) {
-      return res.status(400).json({ message: 'Select a client or provide billing details' });
+
+    if (
+      !invoiceData.client &&
+      !invoiceData.customClientName &&
+      !invoiceData.billTo?.companyName
+    ) {
+      return res.status(400).json({
+        message: 'Select a client or provide billing details',
+      });
     }
+
+    // Generate invoice number on backend
+    invoiceData.invoiceNumber = await getNextInvoiceNumber(
+      Invoice,
+      invoiceData.invoiceDate
+        ? new Date(invoiceData.invoiceDate)
+        : new Date()
+    );
 
     const newInvoice = new Invoice(invoiceData);
     await newInvoice.save();
@@ -166,14 +181,17 @@ router.post('/invoices', async (req, res) => {
       req.body.userId || null,
       req.body.userName || 'System',
       'Invoice Created',
-      `Invoice #${newInvoice.invoiceNumber} created for ${newInvoice.currency === 'INR' ? '₹' : '$'}${newInvoice.totalAmount}`,
+      `Invoice #${newInvoice.invoiceNumber} created for ${
+        newInvoice.currency === 'INR' ? '₹' : '$'
+      }${newInvoice.totalAmount}`,
       'info'
     );
 
     res.status(201).json(applyOverdue(newInvoice));
-  } catch (err) { res.status(400).json({ message: err.message }); }
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
 });
-
 router.put('/invoices/:id', async (req, res) => {
   try {
     const oldInvoice = await Invoice.findById(req.params.id);
