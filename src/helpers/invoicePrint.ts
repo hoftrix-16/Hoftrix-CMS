@@ -34,6 +34,7 @@ export async function printInvoiceFromElement(elementId = 'invoice-a4-preview') 
 }
 
 /** Download PDF from the A4 preview DOM */
+/** Download PDF from the A4 preview DOM */
 export async function downloadInvoicePdf(
   elementId = 'invoice-a4-preview',
   filename = 'invoice.pdf'
@@ -44,7 +45,7 @@ export async function downloadInvoicePdf(
     throw new Error('Invoice preview not found')
   }
 
-  // Wait for logo/signature images
+  // Wait for all images
   const images = Array.from(el.querySelectorAll('img'))
 
   await Promise.all(
@@ -62,8 +63,8 @@ export async function downloadInvoicePdf(
     )
   )
 
-  // Give browser a moment to finish layout/fonts
-  await new Promise((resolve) => setTimeout(resolve, 100))
+  // Allow browser layout/fonts to settle
+  await new Promise((resolve) => setTimeout(resolve, 150))
 
   const canvas = await html2canvas(el, {
     scale: 2,
@@ -72,7 +73,6 @@ export async function downloadInvoicePdf(
     backgroundColor: '#ffffff',
     logging: false,
 
-    // Important: use actual rendered element size
     width: el.offsetWidth,
     height: el.offsetHeight,
 
@@ -90,22 +90,61 @@ export async function downloadInvoicePdf(
   const pageWidth = pdf.internal.pageSize.getWidth()
   const pageHeight = pdf.internal.pageSize.getHeight()
 
+  // Small PDF margin
   const margin = 8
   const usableWidth = pageWidth - margin * 2
   const usableHeight = pageHeight - margin * 2
 
+  /*
+   * Convert canvas width into pixels-per-mm.
+   * This keeps the PDF aspect ratio correct.
+   */
   const pxPerMm = canvas.width / usableWidth
 
-  const pageHeightPx = Math.floor(
-    usableHeight * pxPerMm
-  )
+  /*
+   * Maximum canvas height that can fit on one A4 page.
+   */
+  const maxPageHeightPx = Math.floor(usableHeight * pxPerMm)
 
+  /*
+   * If invoice is only slightly taller than the page because
+   * of browser rounding / whitespace, treat it as ONE page.
+   */
+  const tolerancePx = Math.ceil(12 * pxPerMm)
+
+  if (canvas.height <= maxPageHeightPx + tolerancePx) {
+    const pageImage = canvas.toDataURL('image/jpeg', 0.95)
+
+    const renderedHeight = Math.min(
+      canvas.height / pxPerMm,
+      usableHeight
+    )
+
+    pdf.addImage(
+      pageImage,
+      'JPEG',
+      margin,
+      margin,
+      usableWidth,
+      renderedHeight,
+      undefined,
+      'FAST'
+    )
+
+    pdf.save(filename)
+    return
+  }
+
+  /*
+   * Only create multiple pages when the invoice is genuinely
+   * taller than one A4 page.
+   */
   let sourceY = 0
   let pageIndex = 0
 
   while (sourceY < canvas.height) {
     const currentHeight = Math.min(
-      pageHeightPx,
+      maxPageHeightPx,
       canvas.height - sourceY
     )
 
@@ -149,8 +188,7 @@ export async function downloadInvoicePdf(
       pdf.addPage()
     }
 
-    const renderedHeight =
-      currentHeight / pxPerMm
+    const renderedHeight = currentHeight / pxPerMm
 
     pdf.addImage(
       pageImage,

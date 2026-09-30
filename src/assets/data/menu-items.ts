@@ -29,12 +29,12 @@ export const MENU_ITEMS: MenuItemType[] = [
     label: 'Clients',
     url: '/pages/clients',
   },
-  {
-    key: 'mgmt-deals',
-    icon: 'iconamoon:certificate-check-duotone',
-    label: 'Deals Pipeline',
-    url: '/pages/deals',
-  },
+ {
+  key: 'mgmt-deals',
+  icon: 'mdi:handshake-outline',
+  label: 'Deals Pipeline',
+  url: '/pages/deals',
+},
   // {
   //   key: 'mgmt-followups',
   //   icon: 'iconamoon:clock-duotone',

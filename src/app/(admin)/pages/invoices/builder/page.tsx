@@ -1,15 +1,36 @@
 'use client'
+
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams, useLocation, useSearchParams } from 'react-router-dom'
-import { Button, Card, Col, Form, Row, Spinner, Table } from 'react-bootstrap'
-import { useFormik, FieldArray, FormikProvider } from 'formik'
+import {
+  useNavigate,
+  useParams,
+  useLocation,
+  useSearchParams,
+} from 'react-router-dom'
+import {
+  Button,
+  Card,
+  Col,
+  Form,
+  Row,
+  Spinner,
+  Table,
+} from 'react-bootstrap'
+import {
+  useFormik,
+  FieldArray,
+  FormikProvider,
+} from 'formik'
 import * as Yup from 'yup'
 import api from '@/helpers/api'
 import IconifyIcon from '@/components/wrappers/IconifyIcon'
 import { toast } from 'react-toastify'
 import InvoicePreview from '@/components/invoices/InvoicePreview'
 import { computeInvoiceTotals } from '@/helpers/invoiceCalc'
-import { downloadInvoicePdf, printInvoiceFromElement } from '@/helpers/invoicePrint'
+import {
+  downloadInvoicePdf,
+  printInvoiceFromElement,
+} from '@/helpers/invoicePrint'
 import {
   DEFAULT_NOTES,
   DEFAULT_TERMS,
@@ -40,80 +61,146 @@ const emptyBillTo = (): InvoiceBillTo => ({
   gstin: '',
 })
 
-
-
 // Regex Validations
-const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
+const emailRegex =
+  /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
+
 const phoneRegex = /^\d{7,18}$/
-const gstinRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/
+
+const gstinRegex =
+  /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/
+
+// Extract only sequence number.
+//
+// Example:
+//
+// INV-HTF--09-26-002 -> 002
+// INV-HTF--09-26-003 -> 003
+// INV-HTF--09-26-004 -> 004
+// INV-HTF--09-26-0003 -> 0003
+//
+const extractInvoiceSequence = (invoiceNumber: string = '') => {
+  if (!invoiceNumber) return ''
+
+  const parts = invoiceNumber.split('-')
+  const lastPart = parts[parts.length - 1] || ''
+
+  const digits = lastPart.replace(/\D/g, '')
+
+  if (!digits) return ''
+
+  // Keep maximum 4 digits.
+  // If backend returns 2 -> show 002.
+  return digits.slice(-4).padStart(3, '0')
+}
 
 // Yup Validation Schema
 const validationSchema = Yup.object().shape({
-  invoiceIdNumber: Yup.string().trim().required('Invoice number is required'),
+  invoiceIdNumber: Yup.string()
+    .trim()
+    .matches(/^\d{1,4}$/, 'Enter 1 to 4 digits')
+    .required('Invoice number is required'),
+
   subject: Yup.string().max(200, 'Subject is too long'),
+
   invoiceDate: Yup.date().required('Invoice date is required'),
+
   dueDate: Yup.date()
     .nullable()
-    .min(Yup.ref('invoiceDate'), 'Due date cannot be before invoice date'),
+    .min(
+      Yup.ref('invoiceDate'),
+      'Due date cannot be before invoice date'
+    ),
+
   status: Yup.string().required('Status is required'),
-  currency: Yup.string().oneOf(['INR', 'USD']).required('Currency is required'),
+
+  currency: Yup.string()
+    .oneOf(['INR', 'USD'])
+    .required('Currency is required'),
 
   billTo: Yup.object().shape({
-    companyName: Yup.string().trim().required('Client / Company name is required'),
+    companyName: Yup.string()
+      .trim()
+      .required('Client / Company name is required'),
+
     email: Yup.string()
       .trim()
       .transform((value) => (value === '' ? null : value))
       .nullable()
-      .matches(emailRegex, 'Enter a valid email address'),
-  phone: Yup.string()
-  .trim()
-  .nullable()
-  .test(
-    'valid-phone',
-    'Enter a valid phone number',
-    (value) => {
-      if (!value) {
-        return true
-      }
+      .matches(
+        emailRegex,
+        'Enter a valid email address'
+      ),
 
-      const digits = value.replace(/\D/g, '')
-      return phoneRegex.test(digits)
-    }
-  ),
-    address: Yup.string().max(500, 'Address is too long'),
-   gstin: Yup.string()
-  .trim()
-  .nullable()
-  .test(
-    'valid-gstin',
-    'Enter a valid GSTIN format or N/A',
-    (value) => {
-      if (!value) return true
+    phone: Yup.string()
+      .trim()
+      .nullable()
+      .test(
+        'valid-phone',
+        'Enter a valid phone number',
+        (value) => {
+          if (!value) {
+            return true
+          }
 
-      const normalized = value.trim().toUpperCase()
+          const digits = value.replace(/\D/g, '')
 
-      if (normalized === 'N/A') return true
+          return phoneRegex.test(digits)
+        }
+      ),
 
-      return gstinRegex.test(normalized)
-    }
-  ),
+    address: Yup.string().max(
+      500,
+      'Address is too long'
+    ),
+
+    // GST can be blank or N/A.
+    // Valid GSTIN is also accepted.
+    gstin: Yup.string()
+      .trim()
+      .nullable()
+      .test(
+        'valid-gstin',
+        'Enter a valid GSTIN format or N/A',
+        (value) => {
+          if (!value) return true
+
+          const normalized = value
+            .trim()
+            .toUpperCase()
+
+          if (normalized === 'N/A') {
+            return true
+          }
+
+          return gstinRegex.test(normalized)
+        }
+      ),
   }),
 
   items: Yup.array()
     .of(
       Yup.object().shape({
-        description: Yup.string().trim().required('Item description is required'),
+        description: Yup.string()
+          .trim()
+          .required(
+            'Item description is required'
+          ),
+
         qty: Yup.number()
           .typeError('Qty must be a number')
           .min(1, 'Min qty is 1')
           .required('Qty required'),
+
         rate: Yup.number()
           .typeError('Rate must be a number')
           .min(0, 'Min rate is 0')
           .required('Rate required'),
+
         discount: Yup.number()
           .typeError('Discount must be a number')
           .min(0, 'Min discount is 0'),
+
         taxPercent: Yup.number()
           .typeError('Tax must be a number')
           .min(0, 'Min 0%')
@@ -126,6 +213,7 @@ const validationSchema = Yup.object().shape({
     .min(1, 'Min 1%')
     .max(100, 'Max 100%')
     .required('Billing percent is required'),
+
   amountPaid: Yup.number()
     .min(0, 'Cannot be negative')
     .typeError('Must be a number'),
@@ -136,20 +224,39 @@ const InvoiceBuilderPage = () => {
   const location = useLocation()
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
-  const isEdit = Boolean(id) && location.pathname.endsWith('/edit')
-  const isNew = location.pathname.endsWith('/new') || !id
-  const prefillClientId = searchParams.get('clientId') || ''
-const [phoneDialCode, setPhoneDialCode] = useState('91')
-  const [loading, setLoading] = useState(!isNew)
-  const [saving, setSaving] = useState(false)
-  const [companySettings, setCompanySettings] = useState<CompanySettings | null>(null)
-  const [selectedClientId, setSelectedClientId] = useState('')
+
+  const isEdit =
+    Boolean(id) &&
+    location.pathname.endsWith('/edit')
+
+  const isNew =
+    location.pathname.endsWith('/new') ||
+    !id
+
+  const prefillClientId =
+    searchParams.get('clientId') || ''
+
+  const [phoneDialCode, setPhoneDialCode] =
+    useState('91')
+
+  const [loading, setLoading] =
+    useState(!isNew)
+
+  const [saving, setSaving] =
+    useState(false)
+
+  const [companySettings, setCompanySettings] =
+    useState<CompanySettings | null>(null)
+
+  const [selectedClientId, setSelectedClientId] =
+    useState('')
 
   const formik = useFormik({
     initialValues: {
       invoiceIdNumber: '',
       subject: '',
-      invoiceDate: new Date().toISOString().split('T')[0],
+      invoiceDate:
+        new Date().toISOString().split('T')[0],
       dueDate: '',
       status: 'Draft' as InvoiceStatus,
       currency: 'INR' as 'USD' | 'INR',
@@ -160,237 +267,661 @@ const [phoneDialCode, setPhoneDialCode] = useState('91')
       billingPercent: 100,
       amountPaid: 0,
     },
+
     validationSchema,
+
     onSubmit: async (values) => {
       setSaving(true)
-      const computed = computeInvoiceTotals(
-        values.items,
-        values.status === 'Paid' ? 0 : values.amountPaid,
-        values.billingPercent
-      )
-      const paidAmount = values.status === 'Paid' ? computed.totalAmount : values.amountPaid
 
-      const phoneDigits = values.billTo.phone.replace(/\D/g, '')
-      const dialCodeDigits = phoneDialCode.replace(/\D/g, '')
+      const computed =
+        computeInvoiceTotals(
+          values.items,
+          values.status === 'Paid'
+            ? 0
+            : values.amountPaid,
+          values.billingPercent
+        )
+
+      const paidAmount =
+        values.status === 'Paid'
+          ? computed.totalAmount
+          : values.amountPaid
+
+      // Phone formatting
+      const phoneDigits =
+        values.billTo.phone.replace(/\D/g, '')
+
+      const dialCodeDigits =
+        phoneDialCode.replace(/\D/g, '')
 
       let formattedPhone = ''
 
-      if (phoneDigits && dialCodeDigits) {
-        const mobileNumber = phoneDigits.startsWith(dialCodeDigits)
-          ? phoneDigits.slice(dialCodeDigits.length)
-          : phoneDigits
+      if (
+        phoneDigits &&
+        dialCodeDigits
+      ) {
+        const mobileNumber =
+          phoneDigits.startsWith(
+            dialCodeDigits
+          )
+            ? phoneDigits.slice(
+                dialCodeDigits.length
+              )
+            : phoneDigits
 
         if (mobileNumber) {
-          formattedPhone = `+${dialCodeDigits}-${mobileNumber}`
+          formattedPhone =
+            `+${dialCodeDigits}-${mobileNumber}`
         }
       }
 
+      /*
+       * IMPORTANT:
+       *
+       * Form contains only:
+       * 002
+       *
+       * Backend receives:
+       * INV-HTF--09-26-002
+       */
+      const fullInvoiceNumber =
+        `${INVOICE_PREFIX}${values.invoiceIdNumber.trim()}`
+
       const payload: any = {
-        invoiceNumber: values.invoiceIdNumber.trim(),
-        client: selectedClientId || undefined,
-        customClientName: values.billTo.companyName,
+        invoiceNumber: fullInvoiceNumber,
+
+        client:
+          selectedClientId || undefined,
+
+        customClientName:
+          values.billTo.companyName,
+
         billTo: {
           ...values.billTo,
           phone: formattedPhone,
         },
+
         subject: values.subject,
-        invoiceDate: values.invoiceDate,
-        dueDate: values.dueDate || undefined,
-        status: values.status,
-        currency: values.currency,
-        items: computed.items,
-        subtotal: computed.subtotal,
-        discountTotal: computed.discountTotal,
-        taxTotal: computed.taxTotal,
-        grossTotal: computed.grossTotal,
-        billingPercent: computed.billingPercent,
-        totalAmount: computed.totalAmount,
-        amountPaid: paidAmount,
-        balanceDue: values.status === 'Paid' ? 0 : Math.max(0, computed.totalAmount - paidAmount),
-        notes: values.notes,
-        terms: values.terms,
-        signatureUrl: branding.signatureUrl,
-        authorizedName: branding.authorizedName,
-        authorizedDesignation: branding.authorizedDesignation,
-        logoUrl: branding.logoUrl,
-        logoSize: branding.logoSize,
-        themeAccent: branding.themeAccent,
+
+        invoiceDate:
+          values.invoiceDate,
+
+        dueDate:
+          values.dueDate || undefined,
+
+        status:
+          values.status,
+
+        currency:
+          values.currency,
+
+        items:
+          computed.items,
+
+        subtotal:
+          computed.subtotal,
+
+        discountTotal:
+          computed.discountTotal,
+
+        taxTotal:
+          computed.taxTotal,
+
+        grossTotal:
+          computed.grossTotal,
+
+        billingPercent:
+          computed.billingPercent,
+
+        totalAmount:
+          computed.totalAmount,
+
+        amountPaid:
+          paidAmount,
+
+        balanceDue:
+          values.status === 'Paid'
+            ? 0
+            : Math.max(
+                0,
+                computed.totalAmount -
+                  paidAmount
+              ),
+
+        notes:
+          values.notes,
+
+        terms:
+          values.terms,
+
+        signatureUrl:
+          branding.signatureUrl,
+
+        authorizedName:
+          branding.authorizedName,
+
+        authorizedDesignation:
+          branding.authorizedDesignation,
+
+        logoUrl:
+          branding.logoUrl,
+
+        logoSize:
+          branding.logoSize,
+
+        themeAccent:
+          branding.themeAccent,
       }
 
       try {
         if (isEdit && id) {
-          await api.put(`/erp/invoices/${id}`, payload)
-          toast.success('Invoice updated')
-          navigate(`/pages/invoices/${id}`)
+          await api.put(
+            `/erp/invoices/${id}`,
+            payload
+          )
+
+          toast.success(
+            'Invoice updated'
+          )
+
+          navigate(
+            `/pages/invoices/${id}`
+          )
         } else {
-          const res = await api.post('/erp/invoices', payload)
-          toast.success('Invoice created')
-          navigate(`/pages/invoices/${res.data._id}`)
+          const res =
+            await api.post(
+              '/erp/invoices',
+              payload
+            )
+
+          toast.success(
+            'Invoice created'
+          )
+
+          navigate(
+            `/pages/invoices/${res.data._id}`
+          )
         }
       } catch (err: any) {
-        toast.error(err.response?.data?.message || 'Save failed')
+        toast.error(
+          err.response?.data?.message ||
+            'Save failed'
+        )
       } finally {
         setSaving(false)
       }
     },
   })
 
-  const { values, errors, touched, handleChange, handleBlur, setFieldValue, handleSubmit } = formik
+  const {
+    values,
+    errors,
+    touched,
+    handleChange,
+    handleBlur,
+    setFieldValue,
+    handleSubmit,
+  } = formik
 
-  const baseTotals = computeInvoiceTotals(values.items, 0, values.billingPercent)
-  const effectivePaid = values.status === 'Paid' ? baseTotals.totalAmount : values.amountPaid
-  const previewTotals = computeInvoiceTotals(values.items, effectivePaid, values.billingPercent)
+  const baseTotals =
+    computeInvoiceTotals(
+      values.items,
+      0,
+      values.billingPercent
+    )
+
+  const effectivePaid =
+    values.status === 'Paid'
+      ? baseTotals.totalAmount
+      : values.amountPaid
+
+  const previewTotals =
+    computeInvoiceTotals(
+      values.items,
+      effectivePaid,
+      values.billingPercent
+    )
 
   const branding = {
-    signatureUrl: companySettings?.signatureUrl || '',
-    authorizedName: companySettings?.authorizedName || 'Ashu Sharma',
-    authorizedDesignation: companySettings?.authorizedDesignation || 'Founder',
-    logoUrl: companySettings?.logoUrl || '',
-    logoSize: companySettings?.logoSize || 72,
-    themeAccent: companySettings?.accentColor || '#FF4D00',
+    signatureUrl:
+      companySettings?.signatureUrl || '',
+
+    authorizedName:
+      companySettings?.authorizedName ||
+      'Ashu Sharma',
+
+    authorizedDesignation:
+      companySettings?.authorizedDesignation ||
+      'Founder',
+
+    logoUrl:
+      companySettings?.logoUrl || '',
+
+    logoSize:
+      companySettings?.logoSize || 72,
+
+    themeAccent:
+      companySettings?.accentColor ||
+      '#FF4D00',
   }
 
   useEffect(() => {
     const boot = async () => {
       try {
-        const [settingsRes, nextRes] = await Promise.all([
-          api.get('/erp/company-settings'),
-          isNew ? api.get('/erp/invoices/next-number') : Promise.resolve(null),
+        const [
+          settingsRes,
+          nextRes,
+        ] = await Promise.all([
+          api.get(
+            '/erp/company-settings'
+          ),
+
+          isNew
+            ? api.get(
+                '/erp/invoices/next-number'
+              )
+            : Promise.resolve(null),
         ])
-        const settings = settingsRes.data
+
+        const settings =
+          settingsRes.data
+
         setCompanySettings(settings)
 
-      let nextInvNum = ''
+        /*
+         * Backend may return:
+         *
+         * INV-HTF--09-26-002
+         *
+         * We only put:
+         *
+         * 002
+         *
+         * into the editable input.
+         */
+        let nextInvNum = ''
 
-if (nextRes?.data?.invoiceNumber) {
-  nextInvNum = nextRes.data.invoiceNumber as string
-}
-        let prefilledBillTo = emptyBillTo()
-        if (isNew && prefillClientId) {
+        if (
+          nextRes?.data?.invoiceNumber
+        ) {
+          nextInvNum =
+            extractInvoiceSequence(
+              nextRes.data.invoiceNumber
+            )
+        }
+
+        let prefilledBillTo =
+          emptyBillTo()
+
+        // Client prefill
+        if (
+          isNew &&
+          prefillClientId
+        ) {
           try {
-            const clientRes = await api.get(`/erp/clients/${prefillClientId}`)
-            const c = clientRes.data
-            setSelectedClientId(c._id)
+            const clientRes =
+              await api.get(
+                `/erp/clients/${prefillClientId}`
+              )
+
+            const c =
+              clientRes.data
+
+            setSelectedClientId(
+              c._id
+            )
+
             prefilledBillTo = {
-              companyName: c.companyName || '',
-              contactPerson: c.contactPerson || '',
-              email: c.email || '',
-              phone: c.phone || '',
-              address: c.address || '',
+              companyName:
+                c.companyName || '',
+
+              contactPerson:
+                c.contactPerson || '',
+
+              email:
+                c.email || '',
+
+              phone:
+                c.phone || '',
+
+              address:
+                c.address || '',
+
               gstin: '',
             }
           } catch {
-            /* ignore prefill errors */
+            // Ignore client prefill errors
           }
         }
 
+        /*
+         * EDIT INVOICE
+         */
         if (isEdit && id) {
-          const res = await api.get(`/erp/invoices/${id}`)
-          const inv = res.data
-          const full = inv.invoiceNumber || ''
-          setSelectedClientId(inv.client?._id || '')
+          const res =
+            await api.get(
+              `/erp/invoices/${id}`
+            )
+
+          const inv =
+            res.data
+
+          const full =
+            inv.invoiceNumber || ''
+
+          setSelectedClientId(
+            inv.client?._id || ''
+          )
+
+          /*
+           * Existing:
+           * INV-HTF--09-26-002
+           *
+           * Input:
+           * 002
+           */
+          const existingSequence =
+            extractInvoiceSequence(full)
 
           formik.resetForm({
             values: {
-              invoiceIdNumber: full.startsWith(INVOICE_PREFIX) ? full.slice(INVOICE_PREFIX.length) : full,
-              subject: inv.subject || '',
-              invoiceDate: inv.invoiceDate ? new Date(inv.invoiceDate).toISOString().split('T')[0] : '',
-              dueDate: inv.dueDate ? new Date(inv.dueDate).toISOString().split('T')[0] : '',
-              status: (inv.status === 'Unpaid' ? 'Pending' : inv.status) || 'Draft',
-              currency: inv.currency || 'INR',
-              billTo: inv.billTo?.companyName
-                ? inv.billTo
-                : {
-                    companyName: inv.customClientName || inv.client?.companyName || '',
-                    contactPerson: inv.client?.contactPerson || '',
-                    email: inv.client?.email || '',
-                    phone: inv.client?.phone || '',
-                    address: inv.client?.address || '',
-                    gstin: inv.billTo?.gstin || '',
-                  },
+              invoiceIdNumber:
+                existingSequence,
+
+              subject:
+                inv.subject || '',
+
+              invoiceDate:
+                inv.invoiceDate
+                  ? new Date(
+                      inv.invoiceDate
+                    )
+                      .toISOString()
+                      .split('T')[0]
+                  : '',
+
+              dueDate:
+                inv.dueDate
+                  ? new Date(
+                      inv.dueDate
+                    )
+                      .toISOString()
+                      .split('T')[0]
+                  : '',
+
+              status:
+                (inv.status === 'Unpaid'
+                  ? 'Pending'
+                  : inv.status) ||
+                'Draft',
+
+              currency:
+                inv.currency || 'INR',
+
+              billTo:
+                inv.billTo?.companyName
+                  ? inv.billTo
+                  : {
+                      companyName:
+                        inv.customClientName ||
+                        inv.client
+                          ?.companyName ||
+                        '',
+
+                      contactPerson:
+                        inv.client
+                          ?.contactPerson ||
+                        '',
+
+                      email:
+                        inv.client?.email ||
+                        '',
+
+                      phone:
+                        inv.client?.phone ||
+                        '',
+
+                      address:
+                        inv.client?.address ||
+                        '',
+
+                      gstin:
+                        inv.billTo?.gstin ||
+                        '',
+                    },
+
               items:
                 inv.items?.length > 0
-                  ? inv.items.map((it: any) => ({
-                      description: it.description || '',
-                      qty: it.qty ?? 1,
-                      rate: it.rate ?? 0,
-                      discount: it.discount ?? 0,
-                      taxPercent: it.taxPercent ?? 0,
-                      amount: it.amount ?? 0,
-                    }))
+                  ? inv.items.map(
+                      (it: any) => ({
+                        description:
+                          it.description ||
+                          '',
+
+                        qty:
+                          it.qty ?? 1,
+
+                        rate:
+                          it.rate ?? 0,
+
+                        discount:
+                          it.discount ?? 0,
+
+                        taxPercent:
+                          it.taxPercent ?? 0,
+
+                        amount:
+                          it.amount ?? 0,
+                      })
+                    )
                   : [emptyItem()],
-              notes: inv.notes || settings.defaultNotes || DEFAULT_NOTES,
-              terms: inv.terms || settings.defaultTerms || DEFAULT_TERMS,
-              billingPercent: inv.billingPercent ?? 100,
-              amountPaid: inv.amountPaid || 0,
+
+              notes:
+                inv.notes ||
+                settings.defaultNotes ||
+                DEFAULT_NOTES,
+
+              terms:
+                inv.terms ||
+                settings.defaultTerms ||
+                DEFAULT_TERMS,
+
+              billingPercent:
+                inv.billingPercent ??
+                100,
+
+              amountPaid:
+                inv.amountPaid || 0,
             },
           })
         } else {
-          setFieldValue('invoiceIdNumber', nextInvNum)
-          setFieldValue('notes', settings.defaultNotes || DEFAULT_NOTES)
-          setFieldValue('terms', settings.defaultTerms || DEFAULT_TERMS)
-          if (prefilledBillTo.companyName) {
-            setFieldValue('billTo', prefilledBillTo)
+          /*
+           * NEW INVOICE
+           *
+           * Backend:
+           * INV-HTF--09-26-002
+           *
+           * Form:
+           * 002
+           */
+          setFieldValue(
+            'invoiceIdNumber',
+            nextInvNum
+          )
+
+          setFieldValue(
+            'notes',
+            settings.defaultNotes ||
+              DEFAULT_NOTES
+          )
+
+          setFieldValue(
+            'terms',
+            settings.defaultTerms ||
+              DEFAULT_TERMS
+          )
+
+          if (
+            prefilledBillTo.companyName
+          ) {
+            setFieldValue(
+              'billTo',
+              prefilledBillTo
+            )
           }
         }
       } catch (err) {
         console.error(err)
-        toast.error('Failed to load invoice builder')
+
+        toast.error(
+          'Failed to load invoice builder'
+        )
       } finally {
         setLoading(false)
       }
     }
-    boot()
-  }, [id, isEdit, isNew, prefillClientId])
 
-  const updateItem = (index: number, field: keyof InvoiceLineItem, value: any) => {
-    const updatedItems = [...values.items]
-    const current = { ...updatedItems[index], [field]: value }
-    current.amount = computeInvoiceTotals([current]).items[0].amount
-    updatedItems[index] = current
-    setFieldValue('items', updatedItems)
+    boot()
+  }, [
+    id,
+    isEdit,
+    isNew,
+    prefillClientId,
+  ])
+
+  const updateItem = (
+    index: number,
+    field: keyof InvoiceLineItem,
+    value: any
+  ) => {
+    const updatedItems = [
+      ...values.items,
+    ]
+
+    const current = {
+      ...updatedItems[index],
+      [field]: value,
+    }
+
+    current.amount =
+      computeInvoiceTotals([
+        current,
+      ]).items[0].amount
+
+    updatedItems[index] =
+      current
+
+    setFieldValue(
+      'items',
+      updatedItems
+    )
   }
 
+  /*
+   * COMPLETE NUMBER FOR PREVIEW
+   *
+   * Form:
+   * 002
+   *
+   * Preview:
+   * INV-HTF--09-26-002
+   */
   const previewModel = {
-    invoiceNumber: INVOICE_PREFIX + values.invoiceIdNumber,
-    invoiceDate: values.invoiceDate,
-    dueDate: values.dueDate,
-    status: values.status,
-    currency: values.currency,
-    billTo: values.billTo,
-    items: previewTotals.items,
-    subtotal: previewTotals.subtotal,
-    discountTotal: previewTotals.discountTotal,
-    taxTotal: previewTotals.taxTotal,
-    grossTotal: previewTotals.grossTotal,
-    billingPercent: previewTotals.billingPercent,
-    totalAmount: previewTotals.totalAmount,
-    amountPaid: previewTotals.amountPaid,
-    balanceDue: previewTotals.balanceDue,
-    notes: values.notes,
-    terms: values.terms,
-    signatureUrl: branding.signatureUrl,
-    authorizedName: branding.authorizedName,
-    authorizedDesignation: branding.authorizedDesignation,
-    logoUrl: branding.logoUrl,
-    logoSize: branding.logoSize,
-    themeAccent: branding.themeAccent,
-    subject: values.subject,
+    invoiceNumber:
+      `${INVOICE_PREFIX}${values.invoiceIdNumber}`,
+
+    invoiceDate:
+      values.invoiceDate,
+
+    dueDate:
+      values.dueDate,
+
+    status:
+      values.status,
+
+    currency:
+      values.currency,
+
+    billTo:
+      values.billTo,
+
+    items:
+      previewTotals.items,
+
+    subtotal:
+      previewTotals.subtotal,
+
+    discountTotal:
+      previewTotals.discountTotal,
+
+    taxTotal:
+      previewTotals.taxTotal,
+
+    grossTotal:
+      previewTotals.grossTotal,
+
+    billingPercent:
+      previewTotals.billingPercent,
+
+    totalAmount:
+      previewTotals.totalAmount,
+
+    amountPaid:
+      previewTotals.amountPaid,
+
+    balanceDue:
+      previewTotals.balanceDue,
+
+    notes:
+      values.notes,
+
+    terms:
+      values.terms,
+
+    signatureUrl:
+      branding.signatureUrl,
+
+    authorizedName:
+      branding.authorizedName,
+
+    authorizedDesignation:
+      branding.authorizedDesignation,
+
+    logoUrl:
+      branding.logoUrl,
+
+    logoSize:
+      branding.logoSize,
+
+    themeAccent:
+      branding.themeAccent,
+
+    subject:
+      values.subject,
   }
 
   if (loading) {
     return (
       <div className="p-5 text-center">
-        <Spinner animation="border" variant="primary" />
+        <Spinner
+          animation="border"
+          variant="primary"
+        />
       </div>
     )
   }
 
   return (
     <FormikProvider value={formik}>
-      <div className="p-4" id="invoice-builder">
+      <div
+        className="p-4"
+        id="invoice-builder"
+      >
         <style>{`
-          #invoice-builder .form-stack { max-width: 1100px; }
+          #invoice-builder .form-stack {
+            max-width: 1100px;
+          }
+
           #invoice-builder .preview-wrap {
             background: #0B0F14;
             padding: 24px 16px 40px;
@@ -398,12 +929,14 @@ if (nextRes?.data?.invoiceNumber) {
             margin-top: 8px;
             overflow: hidden;
           }
+
           #invoice-builder .invoice-a4-paper {
             box-shadow: 0 16px 48px rgba(0,0,0,0.5);
             flex-shrink: 0;
           }
 
           /* Phone input dark theme */
+
           #invoice-builder .react-tel-input {
             width: 100%;
           }
@@ -470,502 +1003,1161 @@ if (nextRes?.data?.invoiceNumber) {
           }
 
           @media (max-width: 767.98px) {
-            #invoice-builder { padding: 0.75rem !important; }
+            #invoice-builder {
+              padding: 0.75rem !important;
+            }
           }
         `}</style>
 
+        {/* HEADER */}
+
         <div className="crm-page-header">
           <div>
-            <Button variant="link" className="text-muted p-0 mb-2" onClick={() => navigate('/pages/invoices')}>
+            <Button
+              variant="link"
+              className="text-muted p-0 mb-2"
+              onClick={() =>
+                navigate(
+                  '/pages/invoices'
+                )
+              }
+            >
               ← Back to invoices
             </Button>
-            <h3 className="fw-bold m-0">{isEdit ? 'Edit Invoice' : 'Create Invoice'}</h3>
+
+            <h3 className="fw-bold m-0">
+              {isEdit
+                ? 'Edit Invoice'
+                : 'Create Invoice'}
+            </h3>
           </div>
+
           <div className="crm-page-actions">
-            <Button variant="outline-secondary" onClick={() => printInvoiceFromElement()}>
-              <IconifyIcon icon="bx:printer" className="me-1" /> Print
+            <Button
+              variant="outline-secondary"
+              onClick={() =>
+                printInvoiceFromElement()
+              }
+            >
+              <IconifyIcon
+                icon="bx:printer"
+                className="me-1"
+              />
+              Print
             </Button>
+
             <Button
               variant="outline-success"
               onClick={async () => {
                 try {
-                  await downloadInvoicePdf('invoice-a4-preview', `${previewModel.invoiceNumber}.pdf`)
-                  toast.success('PDF downloaded')
+                  await downloadInvoicePdf(
+                    'invoice-a4-preview',
+                    `${previewModel.invoiceNumber}.pdf`
+                  )
+
+                  toast.success(
+                    'PDF downloaded'
+                  )
                 } catch {
-                  toast.error('PDF failed')
+                  toast.error(
+                    'PDF failed'
+                  )
                 }
               }}
             >
-              <IconifyIcon icon="bx:download" className="me-1" /> PDF
+              <IconifyIcon
+                icon="bx:download"
+                className="me-1"
+              />
+              PDF
             </Button>
-            <Button variant="primary" className="fw-bold px-4" disabled={saving} onClick={() => handleSubmit()}>
-              {saving ? 'Saving…' : 'Save Invoice'}
+
+            <Button
+              variant="primary"
+              className="fw-bold px-4"
+              disabled={saving}
+              onClick={() =>
+                handleSubmit()
+              }
+            >
+              {saving
+                ? 'Saving…'
+                : 'Save Invoice'}
             </Button>
           </div>
         </div>
 
-        <Form noValidate onSubmit={handleSubmit}>
+        <Form
+          noValidate
+          onSubmit={handleSubmit}
+        >
           <div className="form-stack mx-auto">
             <Row className="g-3">
-              {/* Invoice Details */}
+
+              {/* ========================= */}
+              {/* INVOICE DETAILS */}
+              {/* ========================= */}
+
               <Col lg={6}>
-                <Card className="border-0 mb-0 h-100" style={{ background: '#111827' }}>
+                <Card
+                  className="border-0 mb-0 h-100"
+                  style={{
+                    background: '#111827',
+                  }}
+                >
                   <Card.Body>
-                    <h6 className="fw-bold text-primary mb-3">Invoice Details</h6>
+                    <h6 className="fw-bold text-primary mb-3">
+                      Invoice Details
+                    </h6>
+
                     <Row>
+
+                      {/* Invoice Number */}
+
                       <Col md={6}>
                         <Form.Group className="mb-3">
                           <Form.Label className="small fw-bold text-uppercase text-muted">
                             Invoice Number *
                           </Form.Label>
-                        <Form.Control
-  name="invoiceIdNumber"
-  value={values.invoiceIdNumber}
-  readOnly
-  className="fw-bold"
-  style={{
-    color: '#FF4D00',
-    background: 'rgba(255, 77, 0, 0.05)',
-    borderColor: '#FF4D00',
-  }}
-  isInvalid={touched.invoiceIdNumber && !!errors.invoiceIdNumber}
-/>
 
-<Form.Control.Feedback type="invalid">
-  {errors.invoiceIdNumber}
-</Form.Control.Feedback>
+                          <div className="d-flex">
+
+                            {/* FIXED PREFIX */}
+
+                            <div
+                              className="d-flex align-items-center px-3 fw-bold"
+                              style={{
+                                color:
+                                  '#FF4D00',
+
+                                background:
+                                  'rgba(255, 77, 0, 0.05)',
+
+                                border:
+                                  '1px solid #FF4D00',
+
+                                borderRight: 0,
+
+                                borderRadius:
+                                  '6px 0 0 6px',
+
+                                height:
+                                  '42px',
+
+                                whiteSpace:
+                                  'nowrap',
+                              }}
+                            >
+                              {INVOICE_PREFIX}
+                            </div>
+
+                            {/* ONLY SEQUENCE IS EDITABLE */}
+
+                            <Form.Control
+                              type="text"
+                              inputMode="numeric"
+                              name="invoiceIdNumber"
+                              value={
+                                values.invoiceIdNumber
+                              }
+                              maxLength={4}
+                              onChange={(e) => {
+                                const numberOnly =
+                                  e.target.value
+                                    .replace(
+                                      /\D/g,
+                                      ''
+                                    )
+                                    .slice(
+                                      0,
+                                      4
+                                    )
+
+                                setFieldValue(
+                                  'invoiceIdNumber',
+                                  numberOnly
+                                )
+                              }}
+                              onBlur={
+                                handleBlur
+                              }
+                              placeholder="002"
+                              className="fw-bold"
+                              style={{
+                                width: '90px',
+                                height: '42px',
+                                color:
+                                  '#FF4D00',
+                                background:
+                                  'rgba(255, 77, 0, 0.05)',
+                                border:
+                                  '1px solid #FF4D00',
+                                borderRadius:
+                                  '0 6px 6px 0',
+                              }}
+                              isInvalid={
+                                touched.invoiceIdNumber &&
+                                !!errors.invoiceIdNumber
+                              }
+                            />
+                          </div>
+
+                          {touched.invoiceIdNumber &&
+                            errors.invoiceIdNumber && (
+                              <div className="text-danger small mt-1">
+                                {
+                                  errors.invoiceIdNumber
+                                }
+                              </div>
+                            )}
                         </Form.Group>
                       </Col>
+
+                      {/* Status */}
 
                       <Col md={6}>
                         <Form.Group className="mb-3">
-                          <Form.Label className="small fw-bold text-uppercase text-muted">Status</Form.Label>
+                          <Form.Label className="small fw-bold text-uppercase text-muted">
+                            Status
+                          </Form.Label>
+
                           <Form.Select
                             name="status"
-                            value={values.status}
-                            onChange={handleChange}
-                            onBlur={handleBlur}
+                            value={
+                              values.status
+                            }
+                            onChange={
+                              handleChange
+                            }
+                            onBlur={
+                              handleBlur
+                            }
                           >
-                            {['Draft', 'Sent', 'Pending', 'Paid', 'Overdue', 'Cancelled'].map((s) => (
-                              <option key={s} value={s}>{s}</option>
-                            ))}
+                            {[
+                              'Draft',
+                              'Sent',
+                              'Pending',
+                              'Paid',
+                              'Overdue',
+                              'Cancelled',
+                            ].map(
+                              (s) => (
+                                <option
+                                  key={s}
+                                  value={s}
+                                >
+                                  {s}
+                                </option>
+                              )
+                            )}
                           </Form.Select>
                         </Form.Group>
                       </Col>
+
+                      {/* Invoice Date */}
 
                       <Col md={4}>
                         <Form.Group className="mb-3">
                           <Form.Label className="small fw-bold text-uppercase text-muted">
                             Invoice Date *
                           </Form.Label>
+
                           <Form.Control
                             type="date"
                             name="invoiceDate"
-                            value={values.invoiceDate}
-                            onChange={handleChange}
-                            onBlur={handleBlur}
-                            isInvalid={touched.invoiceDate && !!errors.invoiceDate}
+                            value={
+                              values.invoiceDate
+                            }
+                            onChange={
+                              handleChange
+                            }
+                            onBlur={
+                              handleBlur
+                            }
+                            isInvalid={
+                              touched.invoiceDate &&
+                              !!errors.invoiceDate
+                            }
                           />
+
                           <Form.Control.Feedback type="invalid">
-                            {errors.invoiceDate}
+                            {
+                              errors.invoiceDate
+                            }
                           </Form.Control.Feedback>
                         </Form.Group>
                       </Col>
 
+                      {/* Due Date */}
+
                       <Col md={4}>
                         <Form.Group className="mb-3">
-                          <Form.Label className="small fw-bold text-uppercase text-muted">Due Date</Form.Label>
+                          <Form.Label className="small fw-bold text-uppercase text-muted">
+                            Due Date
+                          </Form.Label>
+
                           <Form.Control
                             type="date"
                             name="dueDate"
-                            value={values.dueDate}
-                            onChange={handleChange}
-                            onBlur={handleBlur}
-                            isInvalid={touched.dueDate && !!errors.dueDate}
+                            value={
+                              values.dueDate
+                            }
+                            onChange={
+                              handleChange
+                            }
+                            onBlur={
+                              handleBlur
+                            }
+                            isInvalid={
+                              touched.dueDate &&
+                              !!errors.dueDate
+                            }
                           />
+
                           <Form.Control.Feedback type="invalid">
-                            {errors.dueDate}
+                            {
+                              errors.dueDate
+                            }
                           </Form.Control.Feedback>
                         </Form.Group>
                       </Col>
 
+                      {/* Currency */}
+
                       <Col md={4}>
                         <Form.Group className="mb-3">
-                          <Form.Label className="small fw-bold text-uppercase text-muted">Currency</Form.Label>
+                          <Form.Label className="small fw-bold text-uppercase text-muted">
+                            Currency
+                          </Form.Label>
+
                           <Form.Select
                             name="currency"
-                            value={values.currency}
-                            onChange={handleChange}
-                            onBlur={handleBlur}
+                            value={
+                              values.currency
+                            }
+                            onChange={
+                              handleChange
+                            }
+                            onBlur={
+                              handleBlur
+                            }
                           >
-                            <option value="INR">INR (₹)</option>
-                            <option value="USD">USD ($)</option>
+                            <option value="INR">
+                              INR (₹)
+                            </option>
+
+                            <option value="USD">
+                              USD ($)
+                            </option>
                           </Form.Select>
                         </Form.Group>
                       </Col>
 
+                      {/* Subject */}
+
                       <Col md={12}>
                         <Form.Group className="mb-0">
-                          <Form.Label className="small fw-bold text-uppercase text-muted">Subject</Form.Label>
+                          <Form.Label className="small fw-bold text-uppercase text-muted">
+                            Subject
+                          </Form.Label>
+
                           <Form.Control
                             name="subject"
-                            value={values.subject}
+                            value={
+                              values.subject
+                            }
                             placeholder="e.g. Website Development Project"
-                            onChange={handleChange}
-                            onBlur={handleBlur}
-                            isInvalid={touched.subject && !!errors.subject}
+                            onChange={
+                              handleChange
+                            }
+                            onBlur={
+                              handleBlur
+                            }
+                            isInvalid={
+                              touched.subject &&
+                              !!errors.subject
+                            }
                           />
+
                           <Form.Control.Feedback type="invalid">
-                            {errors.subject}
+                            {
+                              errors.subject
+                            }
                           </Form.Control.Feedback>
                         </Form.Group>
                       </Col>
+
                     </Row>
                   </Card.Body>
                 </Card>
               </Col>
 
-              {/* Bill To */}
+              {/* ========================= */}
+              {/* BILL TO */}
+              {/* ========================= */}
+
               <Col lg={6}>
-                <Card className="border-0 mb-0 h-100" style={{ background: '#111827' }}>
+                <Card
+                  className="border-0 mb-0 h-100"
+                  style={{
+                    background: '#111827',
+                  }}
+                >
                   <Card.Body>
-                    <h6 className="fw-bold text-primary mb-3">Bill To</h6>
+                    <h6 className="fw-bold text-primary mb-3">
+                      Bill To
+                    </h6>
+
                     <Row>
+
+                      {/* Client Name */}
+
                       <Col md={12}>
                         <Form.Group className="mb-3">
                           <Form.Label className="small fw-bold text-uppercase text-muted">
                             Client Name *
                           </Form.Label>
+
                           <Form.Control
                             type="text"
                             name="billTo.companyName"
                             placeholder="Enter client / company name"
-                            value={values.billTo.companyName}
+                            value={
+                              values.billTo.companyName
+                            }
                             onChange={(e) => {
-                              setSelectedClientId('')
+                              setSelectedClientId(
+                                ''
+                              )
+
                               handleChange(e)
                             }}
-                            onBlur={handleBlur}
-                            isInvalid={touched.billTo?.companyName && !!errors.billTo?.companyName}
+                            onBlur={
+                              handleBlur
+                            }
+                            isInvalid={
+                              touched.billTo
+                                ?.companyName &&
+                              !!errors.billTo
+                                ?.companyName
+                            }
                           />
+
                           <Form.Control.Feedback type="invalid">
-                            {errors.billTo?.companyName}
+                            {
+                              errors.billTo
+                                ?.companyName
+                            }
                           </Form.Control.Feedback>
                         </Form.Group>
                       </Col>
 
+                      {/* Email */}
+
                       <Col md={6}>
                         <Form.Group className="mb-3">
-                          <Form.Label className="small text-muted">Email</Form.Label>
+                          <Form.Label className="small text-muted">
+                            Email
+                          </Form.Label>
+
                           <Form.Control
                             type="email"
                             name="billTo.email"
                             placeholder="client@company.com"
-                            value={values.billTo.email}
-                            onChange={handleChange}
-                            onBlur={handleBlur}
-                            isInvalid={touched.billTo?.email && !!errors.billTo?.email}
+                            value={
+                              values.billTo.email
+                            }
+                            onChange={
+                              handleChange
+                            }
+                            onBlur={
+                              handleBlur
+                            }
+                            isInvalid={
+                              touched.billTo
+                                ?.email &&
+                              !!errors.billTo
+                                ?.email
+                            }
                           />
+
                           <Form.Control.Feedback type="invalid">
-                            {errors.billTo?.email}
+                            {
+                              errors.billTo
+                                ?.email
+                            }
                           </Form.Control.Feedback>
                         </Form.Group>
                       </Col>
 
-                      <Col md={6}>
-                       <Form.Group className="mb-3">
-  <Form.Label className="small text-muted">
-    Phone
-  </Form.Label>
+                      {/* Phone */}
 
-  <PhoneInput
+                      <Col md={6}>
+                        <Form.Group className="mb-3">
+                          <Form.Label className="small text-muted">
+                            Phone
+                          </Form.Label>
+
+                          <PhoneInput
                             country="in"
                             enableSearch
                             searchPlaceholder="Search country..."
-                            countryCodeEditable={false}
-                            value={values.billTo.phone.replace(/\D/g, '')}
-                            onChange={(value, country) => {
-                            const dialCode =
-  country &&
-  typeof country === 'object' &&
-  'dialCode' in country
-    ? String(country.dialCode || '')
-    : ''
+                            countryCodeEditable={
+                              false
+                            }
+                            value={values.billTo.phone.replace(
+                              /\D/g,
+                              ''
+                            )}
+                            onChange={(
+                              value,
+                              country
+                            ) => {
+                              const dialCode =
+                                country &&
+                                typeof country ===
+                                  'object' &&
+                                'dialCode' in
+                                  country
+                                  ? String(
+                                      country.dialCode ||
+                                        ''
+                                    )
+                                  : ''
 
-                              if (dialCode) {
-                                setPhoneDialCode(dialCode)
+                              if (
+                                dialCode
+                              ) {
+                                setPhoneDialCode(
+                                  dialCode
+                                )
                               }
 
-                              setFieldValue('billTo.phone', value)
+                              setFieldValue(
+                                'billTo.phone',
+                                value
+                              )
                             }}
                             inputProps={{
                               name: 'billTo.phone',
                               type: 'tel',
-                              autoComplete: 'tel',
-                              inputMode: 'tel',
+                              autoComplete:
+                                'tel',
+                              inputMode:
+                                'tel',
                             }}
-                            containerStyle={{ width: '100%' }}
+                            containerStyle={{
+                              width: '100%',
+                            }}
                             inputStyle={{
                               width: '100%',
                               height: '42px',
-                              background: '#1f2937',
-                              color: '#f8fafc',
-                              border: '1px solid #374151',
-                              borderRadius: '6px',
+                              background:
+                                '#1f2937',
+                              color:
+                                '#f8fafc',
+                              border:
+                                '1px solid #374151',
+                              borderRadius:
+                                '6px',
                             }}
                             buttonStyle={{
-                              background: '#1f2937',
-                              border: '1px solid #374151',
-                              borderRight: 0,
-                              borderRadius: '6px 0 0 6px',
+                              background:
+                                '#1f2937',
+                              border:
+                                '1px solid #374151',
+                              borderRight:
+                                0,
+                              borderRadius:
+                                '6px 0 0 6px',
                             }}
                           />
-  {touched.billTo?.phone && errors.billTo?.phone && (
-    <div className="text-danger small mt-1">
-      {errors.billTo.phone}
-    </div>
-  )}
-</Form.Group>
+
+                          {touched.billTo
+                            ?.phone &&
+                            errors.billTo
+                              ?.phone && (
+                              <div className="text-danger small mt-1">
+                                {
+                                  errors.billTo
+                                    .phone
+                                }
+                              </div>
+                            )}
+                        </Form.Group>
                       </Col>
+
+                      {/* Address */}
 
                       <Col md={8}>
                         <Form.Group className="mb-3">
-                          <Form.Label className="small text-muted">Billing Address</Form.Label>
+                          <Form.Label className="small text-muted">
+                            Billing Address
+                          </Form.Label>
+
                           <Form.Control
                             as="textarea"
                             rows={2}
                             name="billTo.address"
-                            value={values.billTo.address}
-                            onChange={handleChange}
-                            onBlur={handleBlur}
-                            isInvalid={touched.billTo?.address && !!errors.billTo?.address}
+                            value={
+                              values.billTo.address
+                            }
+                            onChange={
+                              handleChange
+                            }
+                            onBlur={
+                              handleBlur
+                            }
+                            isInvalid={
+                              touched.billTo
+                                ?.address &&
+                              !!errors.billTo
+                                ?.address
+                            }
                           />
+
                           <Form.Control.Feedback type="invalid">
-                            {errors.billTo?.address}
+                            {
+                              errors.billTo
+                                ?.address
+                            }
                           </Form.Control.Feedback>
                         </Form.Group>
                       </Col>
 
+                      {/* GST */}
+
                       <Col md={4}>
                         <Form.Group className="mb-3">
-                          <Form.Label className="small text-muted">GST / VAT</Form.Label>
+                          <Form.Label className="small text-muted">
+                            GST / VAT
+                          </Form.Label>
+
                           <Form.Control
                             type="text"
                             name="billTo.gstin"
-                            placeholder="22AAAAA0000A1Z5"
-                            value={values.billTo.gstin}
-                            onChange={handleChange}
-                            onBlur={handleBlur}
-                            isInvalid={touched.billTo?.gstin && !!errors.billTo?.gstin}
+                            placeholder="22AAAAA0000A1Z5 / N/A"
+                            value={
+                              values.billTo.gstin
+                            }
+                            onChange={
+                              handleChange
+                            }
+                            onBlur={
+                              handleBlur
+                            }
+                            isInvalid={
+                              touched.billTo
+                                ?.gstin &&
+                              !!errors.billTo
+                                ?.gstin
+                            }
                           />
+
                           <Form.Control.Feedback type="invalid">
-                            {errors.billTo?.gstin}
+                            {
+                              errors.billTo
+                                ?.gstin
+                            }
                           </Form.Control.Feedback>
                         </Form.Group>
                       </Col>
+
                     </Row>
                   </Card.Body>
                 </Card>
               </Col>
             </Row>
 
-            {/* Line Items */}
-            <Card className="border-0 mb-3 mt-3" style={{ background: '#111827' }}>
+            {/* ========================= */}
+            {/* LINE ITEMS */}
+            {/* ========================= */}
+
+            <Card
+              className="border-0 mb-3 mt-3"
+              style={{
+                background: '#111827',
+              }}
+            >
               <Card.Body>
                 <FieldArray name="items">
-                  {({ push, remove }) => (
+                  {({
+                    push,
+                    remove,
+                  }) => (
                     <>
                       <div className="d-flex justify-content-between align-items-center mb-3">
-                        <h6 className="fw-bold text-primary m-0">Line Items</h6>
-                        <Button size="sm" variant="primary" onClick={() => push(emptyItem())}>
+                        <h6 className="fw-bold text-primary m-0">
+                          Line Items
+                        </h6>
+
+                        <Button
+                          size="sm"
+                          variant="primary"
+                          onClick={() =>
+                            push(
+                              emptyItem()
+                            )
+                          }
+                        >
                           + Add Item
                         </Button>
                       </div>
 
-                      {typeof errors.items === 'string' && (
-                        <div className="text-danger small mb-2">{errors.items}</div>
+                      {typeof errors.items ===
+                        'string' && (
+                        <div className="text-danger small mb-2">
+                          {
+                            errors.items
+                          }
+                        </div>
                       )}
 
-                      <Table responsive size="sm" className="align-middle mb-3">
+                      <Table
+                        responsive
+                        size="sm"
+                        className="align-middle mb-3"
+                      >
                         <thead>
                           <tr className="text-muted small">
-                            <th>Description *</th>
-                            <th style={{ width: 85 }}>Qty *</th>
-                            <th style={{ width: 100 }}>Rate *</th>
-                            <th style={{ width: 90 }}>Disc.</th>
-                            <th style={{ width: 80 }}>Tax%</th>
-                            <th style={{ width: 90 }}>Amt</th>
-                            <th style={{ width: 40 }} />
+                            <th>
+                              Description *
+                            </th>
+
+                            <th
+                              style={{
+                                width: 85,
+                              }}
+                            >
+                              Qty *
+                            </th>
+
+                            <th
+                              style={{
+                                width: 100,
+                              }}
+                            >
+                              Rate *
+                            </th>
+
+                            <th
+                              style={{
+                                width: 90,
+                              }}
+                            >
+                              Disc.
+                            </th>
+
+                            <th
+                              style={{
+                                width: 80,
+                              }}
+                            >
+                              Tax%
+                            </th>
+
+                            <th
+                              style={{
+                                width: 90,
+                              }}
+                            >
+                              Amt
+                            </th>
+
+                            <th
+                              style={{
+                                width: 40,
+                              }}
+                            />
                           </tr>
                         </thead>
-                        <tbody>
-                          {values.items.map((item, idx) => {
-                            const itemErrors = (errors.items as any)?.[idx] || {}
-                            const itemTouched = (touched.items as any)?.[idx] || {}
 
-                            return (
-                              <tr key={idx}>
-                                <td>
-                                  <Form.Control
-                                    size="sm"
-                                    name={`items.${idx}.description`}
-                                    value={item.description}
-                                    placeholder="Service / product"
-                                    onChange={(e) => updateItem(idx, 'description', e.target.value)}
-                                    onBlur={handleBlur}
-                                    isInvalid={itemTouched.description && !!itemErrors.description}
-                                  />
-                                  <Form.Control.Feedback type="invalid">
-                                    {itemErrors.description}
-                                  </Form.Control.Feedback>
-                                </td>
-                                <td>
-                                  <Form.Control
-                                    size="sm"
-                                    type="number"
-                                    min="1"
-                                    name={`items.${idx}.qty`}
-                                    value={item.qty}
-                                    onChange={(e) => updateItem(idx, 'qty', Number(e.target.value))}
-                                    onBlur={handleBlur}
-                                    isInvalid={itemTouched.qty && !!itemErrors.qty}
-                                  />
-                                </td>
-                                <td>
-                                  <Form.Control
-                                    size="sm"
-                                    type="number"
-                                    min="0"
-                                    name={`items.${idx}.rate`}
-                                    value={item.rate}
-                                    onChange={(e) => updateItem(idx, 'rate', Number(e.target.value))}
-                                    onBlur={handleBlur}
-                                    isInvalid={itemTouched.rate && !!itemErrors.rate}
-                                  />
-                                </td>
-                                <td>
-                                  <Form.Control
-                                    size="sm"
-                                    type="number"
-                                    min="0"
-                                    name={`items.${idx}.discount`}
-                                    value={item.discount}
-                                    onChange={(e) => updateItem(idx, 'discount', Number(e.target.value))}
-                                    onBlur={handleBlur}
-                                    isInvalid={itemTouched.discount && !!itemErrors.discount}
-                                  />
-                                </td>
-                                <td>
-                                  <Form.Control
-                                    size="sm"
-                                    type="number"
-                                    min="0"
-                                    max="100"
-                                    name={`items.${idx}.taxPercent`}
-                                    value={item.taxPercent}
-                                    onChange={(e) => updateItem(idx, 'taxPercent', Number(e.target.value))}
-                                    onBlur={handleBlur}
-                                    isInvalid={itemTouched.taxPercent && !!itemErrors.taxPercent}
-                                  />
-                                </td>
-                                <td className="small fw-bold">
-                                  {previewTotals.items[idx]?.amount?.toLocaleString()}
-                                </td>
-                                <td>
-                                  <Button
-                                    size="sm"
-                                    variant="soft-danger"
-                                    disabled={values.items.length === 1}
-                                    onClick={() => remove(idx)}
-                                  >
-                                    <IconifyIcon icon="bx:trash" />
-                                  </Button>
-                                </td>
-                              </tr>
-                            )
-                          })}
+                        <tbody>
+                          {values.items.map(
+                            (
+                              item,
+                              idx
+                            ) => {
+                              const itemErrors =
+                                (errors.items as any)?.[
+                                  idx
+                                ] || {}
+
+                              const itemTouched =
+                                (touched.items as any)?.[
+                                  idx
+                                ] || {}
+
+                              return (
+                                <tr
+                                  key={
+                                    idx
+                                  }
+                                >
+                                  <td>
+                                    <Form.Control
+                                      size="sm"
+                                      name={`items.${idx}.description`}
+                                      value={
+                                        item.description
+                                      }
+                                      placeholder="Service / product"
+                                      onChange={(
+                                        e
+                                      ) =>
+                                        updateItem(
+                                          idx,
+                                          'description',
+                                          e
+                                            .target
+                                            .value
+                                        )
+                                      }
+                                      onBlur={
+                                        handleBlur
+                                      }
+                                      isInvalid={
+                                        itemTouched.description &&
+                                        !!itemErrors.description
+                                      }
+                                    />
+
+                                    <Form.Control.Feedback type="invalid">
+                                      {
+                                        itemErrors.description
+                                      }
+                                    </Form.Control.Feedback>
+                                  </td>
+
+                                  <td>
+                                    <Form.Control
+                                      size="sm"
+                                      type="number"
+                                      min="1"
+                                      name={`items.${idx}.qty`}
+                                      value={
+                                        item.qty
+                                      }
+                                      onChange={(
+                                        e
+                                      ) =>
+                                        updateItem(
+                                          idx,
+                                          'qty',
+                                          Number(
+                                            e
+                                              .target
+                                              .value
+                                          )
+                                        )
+                                      }
+                                      onBlur={
+                                        handleBlur
+                                      }
+                                      isInvalid={
+                                        itemTouched.qty &&
+                                        !!itemErrors.qty
+                                      }
+                                    />
+                                  </td>
+
+                                  <td>
+                                    <Form.Control
+                                      size="sm"
+                                      type="number"
+                                      min="0"
+                                      name={`items.${idx}.rate`}
+                                      value={
+                                        item.rate
+                                      }
+                                      onChange={(
+                                        e
+                                      ) =>
+                                        updateItem(
+                                          idx,
+                                          'rate',
+                                          Number(
+                                            e
+                                              .target
+                                              .value
+                                          )
+                                        )
+                                      }
+                                      onBlur={
+                                        handleBlur
+                                      }
+                                      isInvalid={
+                                        itemTouched.rate &&
+                                        !!itemErrors.rate
+                                      }
+                                    />
+                                  </td>
+
+                                  <td>
+                                    <Form.Control
+                                      size="sm"
+                                      type="number"
+                                      min="0"
+                                      name={`items.${idx}.discount`}
+                                      value={
+                                        item.discount
+                                      }
+                                      onChange={(
+                                        e
+                                      ) =>
+                                        updateItem(
+                                          idx,
+                                          'discount',
+                                          Number(
+                                            e
+                                              .target
+                                              .value
+                                          )
+                                        )
+                                      }
+                                      onBlur={
+                                        handleBlur
+                                      }
+                                      isInvalid={
+                                        itemTouched.discount &&
+                                        !!itemErrors.discount
+                                      }
+                                    />
+                                  </td>
+
+                                  <td>
+                                    <Form.Control
+                                      size="sm"
+                                      type="number"
+                                      min="0"
+                                      max="100"
+                                      name={`items.${idx}.taxPercent`}
+                                      value={
+                                        item.taxPercent
+                                      }
+                                      onChange={(
+                                        e
+                                      ) =>
+                                        updateItem(
+                                          idx,
+                                          'taxPercent',
+                                          Number(
+                                            e
+                                              .target
+                                              .value
+                                          )
+                                        )
+                                      }
+                                      onBlur={
+                                        handleBlur
+                                      }
+                                      isInvalid={
+                                        itemTouched.taxPercent &&
+                                        !!itemErrors.taxPercent
+                                      }
+                                    />
+                                  </td>
+
+                                  <td className="small fw-bold">
+                                    {previewTotals
+                                      .items[
+                                        idx
+                                      ]
+                                      ?.amount?.toLocaleString()}
+                                  </td>
+
+                                  <td>
+                                    <Button
+                                      size="sm"
+                                      variant="soft-danger"
+                                      disabled={
+                                        values
+                                          .items
+                                          .length ===
+                                        1
+                                      }
+                                      onClick={() =>
+                                        remove(
+                                          idx
+                                        )
+                                      }
+                                    >
+                                      <IconifyIcon
+                                        icon="bx:trash"
+                                      />
+                                    </Button>
+                                  </td>
+                                </tr>
+                              )
+                            }
+                          )}
                         </tbody>
                       </Table>
                     </>
                   )}
                 </FieldArray>
 
+                {/* Billing Percentage */}
+
                 <Row className="g-3 align-items-end">
                   <Col md={12}>
                     <Form.Label className="small fw-bold text-uppercase text-muted">
                       Invoice Amount %
                     </Form.Label>
+
                     <p className="small text-muted mb-2">
                       Full amount:{' '}
                       <strong className="text-light">
-                        {values.currency === 'USD' ? '$' : '₹'}
+                        {values.currency ===
+                        'USD'
+                          ? '$'
+                          : '₹'}
                         {previewTotals.grossTotal.toLocaleString()}
                       </strong>{' '}
-                      · Bill only a part (e.g. 50% advance)
+                      · Bill only a part
+                      (e.g. 50% advance)
                     </p>
+
                     <div className="d-flex flex-wrap gap-2 mb-2">
-                      {[25, 50, 75, 100].map((p) => (
-                        <Button
-                          key={p}
-                          size="sm"
-                          variant={values.billingPercent === p ? 'primary' : 'outline-primary'}
-                          onClick={() => setFieldValue('billingPercent', p)}
-                        >
-                          {p}%
-                        </Button>
-                      ))}
+                      {[25, 50, 75, 100].map(
+                        (p) => (
+                          <Button
+                            key={p}
+                            size="sm"
+                            variant={
+                              values.billingPercent ===
+                              p
+                                ? 'primary'
+                                : 'outline-primary'
+                            }
+                            onClick={() =>
+                              setFieldValue(
+                                'billingPercent',
+                                p
+                              )
+                            }
+                          >
+                            {p}%
+                          </Button>
+                        )
+                      )}
+
                       <Form.Control
                         type="number"
                         min={1}
                         max={100}
-                        style={{ width: 100 }}
+                        style={{
+                          width: 100,
+                        }}
                         size="sm"
                         name="billingPercent"
-                        value={values.billingPercent}
+                        value={
+                          values.billingPercent
+                        }
                         onChange={(e) =>
                           setFieldValue(
                             'billingPercent',
-                            Math.min(100, Math.max(0, Number(e.target.value) || 0))
+                            Math.min(
+                              100,
+                              Math.max(
+                                0,
+                                Number(
+                                  e.target
+                                    .value
+                                ) || 0
+                              )
+                            )
                           )
                         }
-                        onBlur={handleBlur}
-                        isInvalid={touched.billingPercent && !!errors.billingPercent}
+                        onBlur={
+                          handleBlur
+                        }
+                        isInvalid={
+                          touched.billingPercent &&
+                          !!errors.billingPercent
+                        }
                       />
                     </div>
+
                     <div className="fw-bold text-primary">
-                      This invoice: {values.currency === 'USD' ? '$' : '₹'}
+                      This invoice:{' '}
+                      {values.currency ===
+                      'USD'
+                        ? '$'
+                        : '₹'}
                       {previewTotals.totalAmount.toLocaleString()}
-                      {values.billingPercent < 100 && (
+
+                      {values.billingPercent <
+                        100 && (
                         <span className="text-muted small fw-normal ms-2">
-                          ({values.billingPercent}% of full amount)
+                          (
+                          {
+                            values.billingPercent
+                          }
+                          % of full amount)
                         </span>
                       )}
                     </div>
                   </Col>
 
+                  {/* Amount Paid */}
+
                   <Col md={6}>
                     <Form.Group>
-                      <Form.Label className="small text-muted">Amount Paid</Form.Label>
+                      <Form.Label className="small text-muted">
+                        Amount Paid
+                      </Form.Label>
+
                       <Form.Control
                         type="number"
                         name="amountPaid"
-                        disabled={values.status === 'Paid'}
-                        value={values.status === 'Paid' ? previewTotals.totalAmount : values.amountPaid}
-                        onChange={handleChange}
-                        onBlur={handleBlur}
-                        isInvalid={touched.amountPaid && !!errors.amountPaid}
+                        disabled={
+                          values.status ===
+                          'Paid'
+                        }
+                        value={
+                          values.status ===
+                          'Paid'
+                            ? previewTotals.totalAmount
+                            : values.amountPaid
+                        }
+                        onChange={
+                          handleChange
+                        }
+                        onBlur={
+                          handleBlur
+                        }
+                        isInvalid={
+                          touched.amountPaid &&
+                          !!errors.amountPaid
+                        }
                       />
+
                       <Form.Control.Feedback type="invalid">
-                        {errors.amountPaid}
+                        {
+                          errors.amountPaid
+                        }
                       </Form.Control.Feedback>
                     </Form.Group>
                   </Col>
 
-                  <Col md={6} className="d-flex align-items-end">
+                  {/* Balance */}
+
+                  <Col
+                    md={6}
+                    className="d-flex align-items-end"
+                  >
                     <div className="w-100 text-end">
-                      <div className="small text-muted">Balance Due</div>
+                      <div className="small text-muted">
+                        Balance Due
+                      </div>
+
                       <div className="fs-4 fw-bold text-primary">
-                        {values.currency === 'USD' ? '$' : '₹'}
+                        {values.currency ===
+                        'USD'
+                          ? '$'
+                          : '₹'}
+
                         {previewTotals.balanceDue.toLocaleString()}
                       </div>
                     </div>
@@ -974,99 +2166,173 @@ if (nextRes?.data?.invoiceNumber) {
               </Card.Body>
             </Card>
 
-            {/* Notes & Branding */}
+            {/* ========================= */}
+            {/* NOTES & BRANDING */}
+            {/* ========================= */}
+
             <Row className="g-3 mb-3">
+
               <Col lg={8}>
-                <Card className="border-0 h-100" style={{ background: '#111827' }}>
+                <Card
+                  className="border-0 h-100"
+                  style={{
+                    background: '#111827',
+                  }}
+                >
                   <Card.Body>
-                    <h6 className="fw-bold text-primary mb-3">Notes & Terms</h6>
+                    <h6 className="fw-bold text-primary mb-3">
+                      Notes & Terms
+                    </h6>
+
                     <Form.Group className="mb-3">
-                      <Form.Label className="small text-muted">Notes</Form.Label>
+                      <Form.Label className="small text-muted">
+                        Notes
+                      </Form.Label>
+
                       <Form.Control
                         as="textarea"
                         rows={2}
                         name="notes"
-                        value={values.notes}
-                        onChange={handleChange}
-                        onBlur={handleBlur}
+                        value={
+                          values.notes
+                        }
+                        onChange={
+                          handleChange
+                        }
+                        onBlur={
+                          handleBlur
+                        }
                       />
                     </Form.Group>
+
                     <Form.Group>
-                      <Form.Label className="small text-muted">Terms & Conditions</Form.Label>
+                      <Form.Label className="small text-muted">
+                        Terms & Conditions
+                      </Form.Label>
+
                       <Form.Control
                         as="textarea"
                         rows={4}
                         name="terms"
-                        value={values.terms}
-                        onChange={handleChange}
-                        onBlur={handleBlur}
+                        value={
+                          values.terms
+                        }
+                        onChange={
+                          handleChange
+                        }
+                        onBlur={
+                          handleBlur
+                        }
                       />
                     </Form.Group>
                   </Card.Body>
                 </Card>
               </Col>
 
+              {/* Branding */}
+
               <Col lg={4}>
-                <Card className="border-0 h-100" style={{ background: '#111827' }}>
+                <Card
+                  className="border-0 h-100"
+                  style={{
+                    background: '#111827',
+                  }}
+                >
                   <Card.Body>
-                    <h6 className="fw-bold text-primary mb-2">Company Branding</h6>
+                    <h6 className="fw-bold text-primary mb-2">
+                      Company Branding
+                    </h6>
+
                     <p className="small text-muted mb-3">
-                      Logo, signature, and authorized person are saved once in branding settings and
-                      auto-applied to every invoice.
+                      Logo, signature, and
+                      authorized person are
+                      saved once in branding
+                      settings and auto-applied
+                      to every invoice.
                     </p>
+
                     {branding.logoUrl && (
                       <img
-                        src={branding.logoUrl}
+                        src={
+                          branding.logoUrl
+                        }
                         alt="Logo"
-                        style={{ height: 40, objectFit: 'contain', marginBottom: 8 }}
+                        style={{
+                          height: 40,
+                          objectFit:
+                            'contain',
+                          marginBottom: 8,
+                        }}
                       />
                     )}
+
                     <div className="small mb-1">
-                      <strong>{branding.authorizedName}</strong>
+                      <strong>
+                        {
+                          branding.authorizedName
+                        }
+                      </strong>
                     </div>
-                    <div className="small text-muted mb-3">{branding.authorizedDesignation}</div>
+
+                    <div className="small text-muted mb-3">
+                      {
+                        branding.authorizedDesignation
+                      }
+                    </div>
+
                     {branding.signatureUrl && (
                       <img
-                        src={branding.signatureUrl}
+                        src={
+                          branding.signatureUrl
+                        }
                         alt="Signature"
                         style={{
                           maxHeight: 48,
                           maxWidth: 140,
-                          objectFit: 'contain',
-                          background: '#fff',
+                          objectFit:
+                            'contain',
+                          background:
+                            '#fff',
                           padding: 4,
                           borderRadius: 4,
                           marginBottom: 12,
                         }}
                       />
                     )}
-                    {/* <Button
-                      size="sm"
-                      variant="outline-primary"
-                      className="w-100"
-                      onClick={() => navigate('/pages/invoices/settings')}
-                    >
-                      Edit Branding Settings
-                    </Button> */}
                   </Card.Body>
                 </Card>
               </Col>
             </Row>
           </div>
 
-          {/* PDF Preview */}
+          {/* ========================= */}
+          {/* PDF PREVIEW */}
+          {/* ========================= */}
+
           <div className="preview-wrap">
             <div
               className="d-flex justify-content-between align-items-center mb-3 px-1"
-              style={{ maxWidth: 900, margin: '0 auto' }}
+              style={{
+                maxWidth: 900,
+                margin: '0 auto',
+              }}
             >
               <span className="small text-muted text-uppercase fw-bold">
                 Invoice Preview (PDF)
               </span>
-              <span className="small text-muted">Print-ready · A4 white paper</span>
+
+              <span className="small text-muted">
+                Print-ready · A4 white paper
+              </span>
             </div>
+
             <div className="preview-wrap">
-              <InvoicePreview invoice={previewModel} companySettings={companySettings} />
+              <InvoicePreview
+                invoice={previewModel}
+                companySettings={
+                  companySettings
+                }
+              />
             </div>
           </div>
         </Form>
