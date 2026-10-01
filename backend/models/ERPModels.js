@@ -276,14 +276,111 @@ const ActivityLogSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
-// --- COMPANY HOLIDAY SCHEMA ---
+// --- COMPANY / FESTIVAL HOLIDAY SCHEMA ---
 const HolidaySchema = new mongoose.Schema({
-  title: { type: String, required: true },
-  date: { type: Date, required: true },
-  endDate: { type: Date },
-  type: { type: String, enum: ['Public', 'Company', 'Optional'], default: 'Company' },
-  description: { type: String, default: '' },
-  createdAt: { type: Date, default: Date.now }
+  title: {
+    type: String,
+    required: true,
+    trim: true,
+  },
+
+  date: {
+    type: Date,
+    required: true,
+  },
+
+  endDate: {
+    type: Date,
+  },
+
+  type: {
+    type: String,
+    enum: [
+      'Public',
+      'Company',
+      'Optional',
+    ],
+    default: 'Company',
+  },
+
+  description: {
+    type: String,
+    default: '',
+  },
+
+  // API = Nager/public holiday data
+  // Company = manually added by admin
+  source: {
+    type: String,
+    enum: ['API', 'Company'],
+    default: 'Company',
+  },
+
+  sourceId: {
+    type: String,
+    default: '',
+  },
+
+  localName: {
+    type: String,
+    default: '',
+  },
+
+  status: {
+    type: String,
+    enum: ['Holiday', 'Working'],
+    default: 'Holiday',
+  },
+
+  countryCode: {
+    type: String,
+    default: 'IN',
+  },
+
+  isActive: {
+    type: Boolean,
+    default: true,
+  },
+
+  createdBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+  },
+
+  createdAt: {
+    type: Date,
+    default: Date.now,
+  },
+
+  updatedAt: {
+    type: Date,
+    default: Date.now,
+  },
+});
+
+// Update updatedAt automatically
+HolidaySchema.pre('save', function (next) {
+  this.updatedAt = new Date();
+});
+
+HolidaySchema.pre(
+  ['findOneAndUpdate', 'updateOne'],
+  function (next) {
+    this.set({
+      updatedAt: new Date(),
+    });
+
+  },
+);
+
+// Useful indexes
+HolidaySchema.index({
+  date: 1,
+});
+
+HolidaySchema.index({
+  source: 1,
+  sourceId: 1,
 });
 
 const Client = mongoose.model('Client', ClientSchema);

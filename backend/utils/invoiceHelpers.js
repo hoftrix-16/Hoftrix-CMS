@@ -28,7 +28,7 @@ function normalizePhone(phone) {
 
 
 
-const INVOICE_PREFIX = 'INV-HTF-';
+const INVOICE_PREFIX = 'INV-HTF';
 
 function normalizeStatus(status) {
   if (status === 'Unpaid') return 'Pending';

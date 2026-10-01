@@ -1094,9 +1094,6 @@ const InvoiceBuilderPage = () => {
           <div className="form-stack mx-auto">
             <Row className="g-3">
 
-              {/* ========================= */}
-              {/* INVOICE DETAILS */}
-              {/* ========================= */}
 
               <Col lg={6}>
                 <Card
@@ -1392,10 +1389,7 @@ const InvoiceBuilderPage = () => {
                 </Card>
               </Col>
 
-              {/* ========================= */}
-              {/* BILL TO */}
-              {/* ========================= */}
-
+          
               <Col lg={6}>
                 <Card
                   className="border-0 mb-0 h-100"
@@ -1669,9 +1663,7 @@ const InvoiceBuilderPage = () => {
               </Col>
             </Row>
 
-            {/* ========================= */}
-            {/* LINE ITEMS */}
-            {/* ========================= */}
+        
 
             <Card
               className="border-0 mb-3 mt-3"
@@ -2305,9 +2297,7 @@ const InvoiceBuilderPage = () => {
             </Row>
           </div>
 
-          {/* ========================= */}
-          {/* PDF PREVIEW */}
-          {/* ========================= */}
+        
 
           <div className="preview-wrap">
             <div

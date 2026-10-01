@@ -195,25 +195,92 @@ router.post('/invoices', async (req, res) => {
 router.put('/invoices/:id', async (req, res) => {
   try {
     const oldInvoice = await Invoice.findById(req.params.id);
+
     if (!oldInvoice) {
-      return res.status(404).json({ message: 'Invoice not found' });
+      return res.status(404).json({
+        message: 'Invoice not found',
+      });
     }
 
     const invoiceData = sanitizeInvoicePayload(req.body);
-    if (invoiceData.client === undefined && (req.body.client === '' || req.body.client == null)) {
+
+    if (
+      invoiceData.client === undefined &&
+      (req.body.client === '' || req.body.client == null)
+    ) {
       invoiceData.client = null;
     }
 
-    const updatedInvoice = await Invoice.findByIdAndUpdate(req.params.id, invoiceData, { new: true });
+    const invoiceDate = invoiceData.invoiceDate
+      ? new Date(invoiceData.invoiceDate)
+      : oldInvoice.invoiceDate ||
+        oldInvoice.createdAt ||
+        new Date();
 
-    if (oldInvoice.status !== 'Paid' && updatedInvoice.status === 'Paid') {
+    const currentInvoiceNumber = String(
+      oldInvoice.invoiceNumber || ''
+    ).trim();
+
+    let formattedInvoiceNumber = currentInvoiceNumber;
+
+
+
+    const oldFormatMatch = currentInvoiceNumber.match(
+      /^INV-HTF-(\d+)$/
+    );
+
+    if (oldFormatMatch) {
+      const sequence = String(
+        parseInt(oldFormatMatch[1], 10)
+      ).padStart(3, '0');
+
+      const date = new Date(invoiceDate);
+
+      const month = String(
+        date.getMonth() + 1
+      ).padStart(2, '0');
+
+      const year = String(
+        date.getFullYear()
+      ).slice(-2);
+
+      formattedInvoiceNumber =
+        `INV-HTF-${month}-${year}-${sequence}`;
+    }
+
+    invoiceData.invoiceNumber = formattedInvoiceNumber;
+
+    const updatedInvoice = await Invoice.findByIdAndUpdate(
+      req.params.id,
+      invoiceData,
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
+
+    if (!updatedInvoice) {
+      return res.status(404).json({
+        message: 'Invoice not found',
+      });
+    }
+
+    // -----------------------------------------
+    // PAID LOGIC
+    // -----------------------------------------
+
+    if (
+      oldInvoice.status !== 'Paid' &&
+      updatedInvoice.status === 'Paid'
+    ) {
       const financeEntry = new Finance({
         type: 'Income',
         amount: updatedInvoice.totalAmount,
         category: 'Invoice Payment',
         reference: updatedInvoice.invoiceNumber,
-        date: new Date()
+        date: new Date(),
       });
+
       await financeEntry.save();
 
       await logActivity(
@@ -234,9 +301,13 @@ router.put('/invoices/:id', async (req, res) => {
     }
 
     res.json(applyOverdue(updatedInvoice));
+
   } catch (err) {
     console.error('Update Invoice Error:', err);
-    res.status(400).json({ message: err.message });
+
+    res.status(400).json({
+      message: err.message,
+    });
   }
 });
 
@@ -749,108 +820,6 @@ router.delete('/employees/:id', async (req, res) => {
     );
 
     res.json({ message: 'Employee deleted' });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
-
-// --- GET INTEGRATED CALENDAR EVENTS ---
-router.get('/calendar-events', async (req, res) => {
-  try {
-    const projects = await Project.find();
-    const employees = await Employee.find();
-    const invoices = await Invoice.find().populate('client', 'companyName');
-    const holidays = await Holiday.find().sort({ date: 1 });
-
-    const events = [];
-
-    // 1. Projects Deadlines (Blue)
-    projects.forEach(project => {
-      if (project.deadline) {
-        events.push({
-          id: `project-${project._id}`,
-          title: `💼 Project Due: ${project.name}`,
-          start: project.deadline,
-          allDay: true,
-          color: '#0d6efd',
-          extendedProps: {
-            type: 'Project',
-            description: project.description || 'No description provided.',
-            status: project.status,
-            progress: `${project.progress}%`
-          }
-        });
-      }
-    });
-
-    // 2. Employee Leaves (Green for Approved, Orange for Pending/Rejected)
-    employees.forEach(emp => {
-      if (emp.leaves && emp.leaves.length > 0) {
-        emp.leaves.forEach(leave => {
-          if (leave.startDate && leave.endDate) {
-            const isApproved = leave.status === 'Approved';
-            events.push({
-              id: `leave-${leave._id}`,
-              title: `🌴 ${emp.name} Leave (${leave.type})`,
-              start: leave.startDate,
-              end: leave.endDate,
-              allDay: true,
-              color: isApproved ? '#198754' : '#ffc107',
-              textColor: isApproved ? '#fff' : '#000',
-              extendedProps: {
-                type: 'Employee Leave',
-                employeeName: emp.name,
-                designation: emp.designation,
-                status: leave.status,
-                reason: leave.reason || 'No reason provided.'
-              }
-            });
-          }
-        });
-      }
-    });
-
-    // 3. Invoice Due Dates (Red for Unpaid, Grey for Paid)
-    invoices.forEach(inv => {
-      if (inv.dueDate) {
-        const isPaid = inv.status === 'Paid';
-        const clientName = inv.billTo?.companyName || inv.customClientName || inv.client?.companyName || 'Valued Client';
-        events.push({
-          id: `invoice-${inv._id}`,
-          title: `📄 Invoice Due: ${inv.invoiceNumber}`,
-          start: inv.dueDate,
-          allDay: true,
-          color: isPaid ? '#6c757d' : '#dc3545',
-          extendedProps: {
-            type: 'Invoice Due',
-            invoiceNumber: inv.invoiceNumber,
-            client: clientName,
-            status: inv.status === 'Unpaid' ? 'Pending' : inv.status,
-            amount: `${inv.currency === 'INR' ? '₹' : '$'}${(inv.totalAmount || 0).toLocaleString()}`
-          }
-        });
-      }
-    });
-
-    // 4. Company / public holidays (Purple)
-    holidays.forEach((holiday) => {
-      events.push({
-        id: `holiday-${holiday._id}`,
-        title: `🎉 ${holiday.title}`,
-        start: holiday.date,
-        end: holiday.endDate || holiday.date,
-        allDay: true,
-        color: '#6f42c1',
-        textColor: '#fff',
-        extendedProps: {
-          type: 'Company Holiday',
-          holidayType: holiday.type,
-          description: holiday.description || 'Company holiday',
-        },
-      });
-    });
-
-    res.json(events);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
