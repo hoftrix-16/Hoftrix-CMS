@@ -87,7 +87,21 @@ export const DEFAULT_TERMS = `1. Payment should be completed within 15 days of i
 
 export const DEFAULT_NOTES = 'Thank you for choosing Hoftrix Technologies Pvt Ltd.'
 
-export const INVOICE_PREFIX = 'INV-HTF-'
+export const getInvoicePrefix = (date?: string) => {
+  const currentDate = date
+    ? new Date(date)
+    : new Date()
+
+  const month = String(
+    currentDate.getMonth() + 1
+  ).padStart(2, '0')
+
+  const year = String(
+    currentDate.getFullYear()
+  ).slice(-2)
+
+  return `INV-HTF-${month}-${year}-`
+}
 
 export const STATUS_BADGE: Record<string, string> = {
   Draft: 'secondary',

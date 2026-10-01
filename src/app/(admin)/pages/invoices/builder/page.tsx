@@ -34,7 +34,7 @@ import {
 import {
   DEFAULT_NOTES,
   DEFAULT_TERMS,
-  INVOICE_PREFIX,
+  getInvoicePrefix,
   type CompanySettings,
   type InvoiceBillTo,
   type InvoiceLineItem,
@@ -315,17 +315,9 @@ const InvoiceBuilderPage = () => {
         }
       }
 
-      /*
-       * IMPORTANT:
-       *
-       * Form contains only:
-       * 002
-       *
-       * Backend receives:
-       * INV-HTF--09-26-002
-       */
+   
       const fullInvoiceNumber =
-        `${INVOICE_PREFIX}${values.invoiceIdNumber.trim()}`
+         `${getInvoicePrefix(values.invoiceDate)}${values.invoiceIdNumber.trim()}`
 
       const payload: any = {
         invoiceNumber: fullInvoiceNumber,
@@ -817,18 +809,9 @@ const InvoiceBuilderPage = () => {
     )
   }
 
-  /*
-   * COMPLETE NUMBER FOR PREVIEW
-   *
-   * Form:
-   * 002
-   *
-   * Preview:
-   * INV-HTF--09-26-002
-   */
   const previewModel = {
     invoiceNumber:
-      `${INVOICE_PREFIX}${values.invoiceIdNumber}`,
+       `${getInvoicePrefix(values.invoiceDate)}${values.invoiceIdNumber}`,
 
     invoiceDate:
       values.invoiceDate,
@@ -1145,7 +1128,7 @@ const InvoiceBuilderPage = () => {
                                   'nowrap',
                               }}
                             >
-                              {INVOICE_PREFIX}
+                             {getInvoicePrefix(values.invoiceDate)}
                             </div>
 
                             {/* ONLY SEQUENCE IS EDITABLE */}
