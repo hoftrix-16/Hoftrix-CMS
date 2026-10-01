@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect,useRef, useState, type FormEvent } from 'react'
 import {
   Card,
   Col,
@@ -72,7 +72,7 @@ const CalendarPage = () => {
 
   const [events, setEvents] = useState<CalendarEvent[]>([])
   const [loading, setLoading] = useState(true)
-
+const calendarDateRef = useRef<Date>(new Date())
   const [selectedEvent, setSelectedEvent] =
     useState<CalendarEvent | null>(null)
 
@@ -689,34 +689,39 @@ const CalendarPage = () => {
 
               <div className="fc-wrapper">
 
-                <FullCalendar
-                  plugins={[
-                    dayGridPlugin,
-                    interactionPlugin,
-                  ]}
-                  initialView="dayGridMonth"
-                  events={events}
+             <FullCalendar
+  plugins={[
+    dayGridPlugin,
+    interactionPlugin,
+  ]}
+  initialView="dayGridMonth"
 
-                  headerToolbar={{
-                    left: 'prev,next today',
-                    center: 'title',
-                    right:
-                      'dayGridMonth,dayGridWeek',
-                  }}
+  // Keep calendar on the month user selected
+  initialDate={calendarDateRef.current}
 
-                  editable={false}
-                  selectable={false}
-                  selectMirror={true}
+  events={events}
 
-                  dayMaxEvents={true}
+  headerToolbar={{
+    left: 'prev,next today',
+    center: 'title',
+    right: 'dayGridMonth,dayGridWeek',
+  }}
 
-                  eventClick={
-                    handleEventClick
-                  }
+  // Save the currently visible month/date
+  datesSet={(dateInfo) => {
+    calendarDateRef.current = dateInfo.view.currentStart
+  }}
 
-                  height="auto"
-                />
+  editable={false}
+  selectable={false}
+  selectMirror={true}
 
+  dayMaxEvents={true}
+
+  eventClick={handleEventClick}
+
+  height="auto"
+/>
               </div>
             )}
 
