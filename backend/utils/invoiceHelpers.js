@@ -197,6 +197,8 @@ async function getNextInvoiceNumber(Invoice, invoiceDate = new Date()) {
   return `${INVOICE_PREFIX}-${month}-${year}-${sequence}`;
 }
 
+const INR_TO_USD_RATE = 0.012;
+
 function buildInvoiceStats(invoices) {
   let totalRevenue = 0;
   let paidAmount = 0;
@@ -205,16 +207,37 @@ function buildInvoiceStats(invoices) {
 
   invoices.forEach((raw) => {
     const inv = applyOverdue(raw);
-    const amount = inv.totalAmount || 0;
+
+    let amount = Number(inv.totalAmount) || 0;
+
+    // INR → USD
+    if (String(inv.currency || 'INR').toUpperCase() === 'INR') {
+      amount = amount * INR_TO_USD_RATE;
+    }
+
+    // USD already USD
     totalRevenue += amount;
-    if (inv.status === 'Paid') paidAmount += amount;
-    else if (inv.status === 'Overdue') overdueAmount += amount;
-    else if (inv.status === 'Cancelled' || inv.status === 'Draft') {
-      /* exclude from pending */
-    } else pendingAmount += amount;
+
+    if (inv.status === 'Paid') {
+      paidAmount += amount;
+    } else if (inv.status === 'Overdue') {
+      overdueAmount += amount;
+    } else if (
+      inv.status === 'Cancelled' ||
+      inv.status === 'Draft'
+    ) {
+      // exclude
+    } else {
+      pendingAmount += amount;
+    }
   });
 
-  return { totalRevenue, paidAmount, pendingAmount, overdueAmount };
+  return {
+    totalRevenue: Math.round(totalRevenue * 100) / 100,
+    paidAmount: Math.round(paidAmount * 100) / 100,
+    pendingAmount: Math.round(pendingAmount * 100) / 100,
+    overdueAmount: Math.round(overdueAmount * 100) / 100,
+  };
 }
 
 module.exports = {

@@ -135,7 +135,7 @@ const InvoicesPage = () => {
               </div>
               <div>
                 <p className="text-muted small mb-1 fw-bold text-uppercase">{card.label}</p>
-                <h4 className="fw-bold mb-0">{formatMoney(card.value, 'INR')}</h4>
+                <h4 className="fw-bold mb-0">{formatMoney(card.value, 'USD')}</h4>
               </div>
             </Card.Body>
           </Card>

@@ -27,12 +27,6 @@ const NAGER_BASE_URL =
   'https://date.nager.at/api/v3/PublicHolidays';
 
 
-/*
-|--------------------------------------------------------------------------
-| DATE HELPERS
-|--------------------------------------------------------------------------
-*/
-
 const formatDateOnly = (date) => {
   if (!date) return null;
 
