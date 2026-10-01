@@ -25,7 +25,7 @@ validateEnv();
 
 const authRoutes = require('./routes/authRoutes');
 const erpRoutes = require('./routes/erpRoutes');
-
+const calendarRoutes = require('./routes/calendarRoutes');
 const app = express();
 const PORT = Number(process.env.PORT) || 5000;
 const HOST = process.env.HOST || '0.0.0.0';
@@ -47,6 +47,7 @@ app.use('/api/auth/forgot-password', authRateLimiter);
 app.use('/api/auth/reset-password', authRateLimiter);
 app.use('/api/auth', authRoutes);
 app.use('/api/erp', erpRoutes);
+app.use('/api/erp', calendarRoutes);
 
 app.get('/api/health', async (_req, res) => {
   if (!isDbConnected()) {
