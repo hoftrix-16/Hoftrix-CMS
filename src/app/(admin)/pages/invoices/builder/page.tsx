@@ -236,8 +236,7 @@ const InvoiceBuilderPage = () => {
   const prefillClientId =
     searchParams.get('clientId') || ''
 
-  const [phoneDialCode, setPhoneDialCode] =
-    useState('91')
+const [phoneDialCode, setPhoneDialCode] = useState('91')
 
   const [loading, setLoading] =
     useState(!isNew)
@@ -288,32 +287,22 @@ const InvoiceBuilderPage = () => {
           : values.amountPaid
 
       // Phone formatting
-      const phoneDigits =
-        values.billTo.phone.replace(/\D/g, '')
+   const rawPhone = String(values.billTo.phone || '').trim()
 
-      const dialCodeDigits =
-        phoneDialCode.replace(/\D/g, '')
+let formattedPhone = rawPhone
 
-      let formattedPhone = ''
+if (rawPhone && !rawPhone.startsWith('+') && phoneDialCode) {
+  const phoneDigits = rawPhone.replace(/\D/g, '')
+  const dialCodeDigits = phoneDialCode.replace(/\D/g, '')
 
-      if (
-        phoneDigits &&
-        dialCodeDigits
-      ) {
-        const mobileNumber =
-          phoneDigits.startsWith(
-            dialCodeDigits
-          )
-            ? phoneDigits.slice(
-                dialCodeDigits.length
-              )
-            : phoneDigits
+  const mobileNumber = phoneDigits.startsWith(dialCodeDigits)
+    ? phoneDigits.slice(dialCodeDigits.length)
+    : phoneDigits
 
-        if (mobileNumber) {
-          formattedPhone =
-            `+${dialCodeDigits}-${mobileNumber}`
-        }
-      }
+  if (mobileNumber) {
+    formattedPhone = `+${dialCodeDigits}-${mobileNumber}`
+  }
+}
 
    
       const fullInvoiceNumber =
@@ -1482,10 +1471,7 @@ const InvoiceBuilderPage = () => {
                             countryCodeEditable={
                               false
                             }
-                            value={values.billTo.phone.replace(
-                              /\D/g,
-                              ''
-                            )}
+                           value={values.billTo.phone || ''}
                             onChange={(
                               value,
                               country

@@ -5,12 +5,9 @@ import { Link, useLocation } from 'react-router-dom'
 
 import IconifyIcon from '@/components/wrappers/IconifyIcon'
 import { useLayoutContext } from '@/context/useLayoutContext'
-import { findAllParent, findMenuItem, getMenuItemFromURL } from '@/helpers/menu'
+import { findAllParent } from '@/helpers/menu'
 import type { MenuItemType, SubMenus } from '@/types/menu'
 
-/* -------------------------------------------------------
-   Normalize URL
-------------------------------------------------------- */
 const normalizePath = (path: string = '') => {
   const cleanPath = path.split('?')[0].split('#')[0]
 
@@ -21,9 +18,36 @@ const normalizePath = (path: string = '') => {
   return cleanPath.replace(/\/+$/, '')
 }
 
-/* -------------------------------------------------------
-   Menu Item With Children
-------------------------------------------------------- */
+const findMenuItemByPath = (
+  items: MenuItemType[],
+  currentPath: string,
+  currentSearch: string,
+): MenuItemType | null => {
+  for (const item of items) {
+    if (item.url) {
+      const itemUrl = new URL(item.url, window.location.origin)
+
+      if (
+        normalizePath(itemUrl.pathname) === currentPath &&
+        itemUrl.search === currentSearch
+      ) {
+        return item
+      }
+    }
+
+    if (item.children?.length) {
+      const found = findMenuItemByPath(
+        item.children,
+        currentPath,
+        currentSearch,
+      )
+
+      if (found) return found
+    }
+  }
+
+  return null
+}
 const MenuItemWithChildren = ({
   item,
   className,
@@ -108,13 +132,14 @@ const MenuItemWithChildren = ({
                   />
                 ) : (
                   <MenuItem
-                    item={child}
-                    className="sub-nav-item"
-                    linkClassName={clsx(
-                      'sub-nav-link',
-                      getActiveClass(child),
-                    )}
-                  />
+  item={child}
+  className="sub-nav-item"
+  linkClassName={clsx(
+    'nav-link',
+    'sub-nav-link',
+    getActiveClass(child),
+  )}
+/>
                 )}
               </Fragment>
             ))}
@@ -125,9 +150,7 @@ const MenuItemWithChildren = ({
   )
 }
 
-/* -------------------------------------------------------
-   Normal Menu Item
-------------------------------------------------------- */
+
 const MenuItem = ({
   item,
   className,
@@ -143,9 +166,6 @@ const MenuItem = ({
   )
 }
 
-/* -------------------------------------------------------
-   Menu Link
-------------------------------------------------------- */
 const MenuItemLink = ({
   item,
   className,
@@ -156,9 +176,13 @@ const MenuItemLink = ({
     <Link
       to={item.url ?? ''}
       target={item.target}
-      className={clsx(className, {
-        disabled: item.isDisabled,
-      })}
+     className={clsx(className, {
+  'orange-active-menu': [
+    'mgmt-projects',
+    'mgmt-project-tasks',
+  ].includes(item.key),
+  disabled: item.isDisabled,
+})}
       onClick={() => {
         if (window.innerWidth <= 767) {
           closeMobileSidebar()
@@ -186,28 +210,21 @@ const MenuItemLink = ({
   )
 }
 
-/* -------------------------------------------------------
-   App Menu Props
-------------------------------------------------------- */
 type AppMenuProps = {
   menuItems: Array<MenuItemType>
 }
 
-/* -------------------------------------------------------
-   App Menu
-------------------------------------------------------- */
+
 const AppMenu = ({
   menuItems,
 }: AppMenuProps) => {
-  const { pathname } = useLocation()
+  const { pathname,search } = useLocation()
   const { closeMobileSidebar } = useLayoutContext()
 
   const [activeMenuItems, setActiveMenuItems] =
     useState<Array<string>>([])
 
-  /* -----------------------------------------------------
-     Toggle Parent Menu
-  ----------------------------------------------------- */
+ 
   const toggleMenu = (
     menuItem: MenuItemType,
     show: boolean,
@@ -228,18 +245,14 @@ const AppMenu = ({
     }
   }
 
-  /* -----------------------------------------------------
-     Mobile Sidebar
-  ----------------------------------------------------- */
+
   useEffect(() => {
     if (window.innerWidth <= 767) {
       closeMobileSidebar()
     }
   }, [pathname, closeMobileSidebar])
 
-  /* -----------------------------------------------------
-     Active Class
-  ----------------------------------------------------- */
+  
   const getActiveClass = useCallback(
     (item: MenuItemType) => {
       return activeMenuItems.includes(item.key)
@@ -249,9 +262,7 @@ const AppMenu = ({
     [activeMenuItems],
   )
 
-  /* -----------------------------------------------------
-     Find Active Menu
-  ----------------------------------------------------- */
+
   const activeMenu = useCallback(() => {
     const currentPath = normalizePath(pathname)
 
@@ -263,26 +274,18 @@ const AppMenu = ({
     /*
       First use your existing helper.
     */
-    const matchingMenuItem = getMenuItemFromURL(
-      menuItems,
-      currentPath,
-    )
 
-    if (!matchingMenuItem) {
-      setActiveMenuItems([])
-      return
-    }
 
-    const activeItem = findMenuItem(
-      menuItems,
-      matchingMenuItem.key,
-    )
+const activeItem = findMenuItemByPath(
+  menuItems,
+  currentPath,
+  search,
+)
 
-    if (!activeItem) {
-      setActiveMenuItems([])
-      return
-    }
-
+if (!activeItem) {
+  setActiveMenuItems([])
+  return
+}
     /*
       Current item + all parents
     */
@@ -293,9 +296,6 @@ const AppMenu = ({
 
     setActiveMenuItems(activeItems)
 
-    /* ---------------------------------------------------
-       Scroll active menu item into view
-    --------------------------------------------------- */
     setTimeout(() => {
       const links = Array.from(
         document.querySelectorAll<HTMLAnchorElement>(
@@ -334,11 +334,9 @@ const AppMenu = ({
         600,
       )
     }, 300)
-  }, [pathname, menuItems])
+  },  [pathname, search, menuItems])
 
-  /* -----------------------------------------------------
-     Smooth Scroll
-  ----------------------------------------------------- */
+  
   const scrollToElement = (
     element: HTMLElement,
     to: number,
@@ -394,18 +392,13 @@ const AppMenu = ({
     animateScroll()
   }
 
-  /* -----------------------------------------------------
-     Run active menu whenever route changes
-  ----------------------------------------------------- */
   useEffect(() => {
     if (menuItems?.length > 0) {
       activeMenu()
     }
   }, [activeMenu, menuItems])
 
-  /* -----------------------------------------------------
-     Render
-  ----------------------------------------------------- */
+
   return (
     <ul className="navbar-nav">
       {(menuItems || []).map(
