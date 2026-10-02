@@ -6,9 +6,12 @@ import { Card, CardBody, Col, Row, Form, Button, InputGroup } from 'react-bootst
 import api from '@/helpers/api'
 import IconifyIcon from '@/components/wrappers/IconifyIcon'
 import { toast } from 'react-toastify'
+import { User } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 
 const AddEmployeePage = () => {
   const idPrefix = 'EMP-HTF-'
+    const navigate = useNavigate()
 
   const [idNumber, setIdNumber] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -168,6 +171,16 @@ const AddEmployeePage = () => {
           }
         `}
       </style>
+       <div className="mb-4">
+  <Button
+   variant="link"
+    type="button"
+    onClick={() => navigate('/pages/employees')}
+   className="text-muted p-0 mb-2"
+  >
+   ← Back to Employees
+  </Button>
+</div>
 
       <Row className="justify-content-center">
         <Col xl={10}>
@@ -176,10 +189,7 @@ const AddEmployeePage = () => {
 
               <div className="d-flex align-items-center gap-3 mb-5">
                 <div className="bg-primary bg-opacity-10 p-3 rounded-3">
-                  <IconifyIcon
-                    icon="iconamoon:profile-add-duotone"
-                    className="text-primary fs-2"
-                  />
+                 <User className="text-white" size={28} />
                 </div>
 
                 <div>

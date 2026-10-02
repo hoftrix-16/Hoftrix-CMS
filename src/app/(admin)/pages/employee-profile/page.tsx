@@ -559,6 +559,16 @@ const EmployeeProfilePage = () => {
           }
         `}
       </style>
+       <div className="mb-4">
+  <Button
+   variant="link"
+    type="button"
+    onClick={() => navigate('/pages/employees')}
+   className="text-muted p-0 mb-2"
+  >
+   ← Back to Employees
+  </Button>
+</div>
 
       <div className="profile-header shadow-lg">
         <Row className="align-items-center">

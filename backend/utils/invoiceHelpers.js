@@ -240,6 +240,8 @@ function buildInvoiceStats(invoices) {
   };
 }
 
+
+
 module.exports = {
   INVOICE_PREFIX,
   normalizeStatus,

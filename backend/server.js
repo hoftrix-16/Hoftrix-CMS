@@ -40,7 +40,17 @@ app.use(cors({ origin: corsOrigins, credentials: true }));
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Uploads folder
+const uploadsDir = path.join(__dirname, 'uploads');
+
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+  console.log('📁 Uploads folder created:', uploadsDir);
+}
+
+// Serve uploaded files publicly
+app.use('/uploads', express.static(uploadsDir));
 
 app.use('/api/auth/login', authRateLimiter);
 app.use('/api/auth/forgot-password', authRateLimiter);

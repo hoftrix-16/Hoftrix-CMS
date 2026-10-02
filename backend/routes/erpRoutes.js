@@ -29,17 +29,57 @@ const { getApiPublicUrl } = require('../utils/urls');
 const getPublicBaseUrl = (req) => getApiPublicUrl() || `${req.protocol}://${req.get('host')}`;
 
 // --- MULTER SETUP FOR SIGNATURES / LOGOS ---
+
+const uploadsDir = path.join(process.cwd(), 'uploads');
+
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, 'uploads/');
+    cb(null, uploadsDir);
   },
+
   filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname).replace(/[^a-zA-Z0-9.]/g, '') || '.png';
+    const ext =
+      path.extname(file.originalname).replace(/[^a-zA-Z0-9.]/g, '') || '.png';
+
     const prefix = file.fieldname === 'logo' ? 'logo-' : 'sig-';
-    cb(null, prefix + Date.now() + ext);
-  }
+
+    const timestamp = new Date()
+      .toISOString()
+      .replace(/[:.]/g, '-');
+
+    const random = Math.round(Math.random() * 1e9);
+
+    cb(null, `${prefix}${timestamp}-${random}${ext}`);
+  },
 });
-const upload = multer({ storage });
+
+const upload = multer({
+  storage,
+});
+
+function deleteOldUpload(fileUrl) {
+  if (!fileUrl) return;
+
+  try {
+    const url = new URL(fileUrl);
+    const filename = path.basename(url.pathname);
+
+    if (!filename) return;
+
+    const filePath = path.join(uploadsDir, filename);
+
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+      console.log('🗑️ Old upload deleted:', filename);
+    }
+  } catch (error) {
+    console.error('❌ Old upload delete error:', error.message);
+  }
+}
 
 router.use(authenticate);
 router.use(erpAccessControl);
@@ -311,32 +351,126 @@ router.put('/invoices/:id', async (req, res) => {
   }
 });
 
-router.post('/invoices/upload-signature', upload.single('signature'), (req, res) => {
-  if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
-  const fileUrl = `${getPublicBaseUrl(req)}/uploads/${req.file.filename}`;
-  res.json({ url: fileUrl });
-});
+router.post(
+  '/invoices/upload-signature',
+  upload.single('signature'),
+  async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({
+          message: 'No file uploaded',
+        });
+      }
+
+      const settings = await getOrCreateCompanySettings();
+
+      // Save old signature URL before replacing it
+      const oldSignatureUrl = settings.signatureUrl;
+
+      // New signature URL
+      const fileUrl = `${getPublicBaseUrl(req)}/uploads/${req.file.filename}`;
+
+      // Save new signature URL in MongoDB
+      settings.signatureUrl = fileUrl;
+      settings.updatedAt = new Date();
+
+      await settings.save();
+
+      // Delete old signature AFTER new signature is saved
+      if (oldSignatureUrl && oldSignatureUrl !== fileUrl) {
+        deleteOldUpload(oldSignatureUrl);
+      }
+
+      res.json({
+        url: fileUrl,
+        settings,
+      });
+    } catch (err) {
+      // If database save fails, delete newly uploaded file
+      if (req.file?.path && fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
+
+      console.error('Signature Upload Error:', err);
+
+      res.status(500).json({
+        message: err.message,
+      });
+    }
+  }
+);
 
 router.post('/invoices/draw-signature', async (req, res) => {
   try {
     const { dataUrl } = req.body;
-    if (!dataUrl || typeof dataUrl !== 'string' || !dataUrl.startsWith('data:image')) {
-      return res.status(400).json({ message: 'Invalid signature data' });
+
+    if (
+      !dataUrl ||
+      typeof dataUrl !== 'string' ||
+      !dataUrl.startsWith('data:image')
+    ) {
+      return res.status(400).json({
+        message: 'Invalid signature data',
+      });
     }
-    const matches = dataUrl.match(/^data:image\/(\w+);base64,(.+)$/);
-    if (!matches) return res.status(400).json({ message: 'Invalid data URL' });
+
+    const matches = dataUrl.match(
+      /^data:image\/(\w+);base64,(.+)$/
+    );
+
+    if (!matches) {
+      return res.status(400).json({
+        message: 'Invalid data URL',
+      });
+    }
+
     const ext = matches[1] === 'jpeg' ? 'jpg' : matches[1];
+
     const buffer = Buffer.from(matches[2], 'base64');
-    const filename = `sig-draw-${Date.now()}.${ext}`;
-    const filepath = path.join('uploads', filename);
+
+    const timestamp = new Date()
+      .toISOString()
+      .replace(/[:.]/g, '-');
+
+    const random = Math.round(Math.random() * 1e9);
+
+    const filename = `sig-draw-${timestamp}-${random}.${ext}`;
+
+    const filepath = path.join(uploadsDir, filename);
+
+    // Save new signature file
     fs.writeFileSync(filepath, buffer);
+
     const fileUrl = `${getPublicBaseUrl(req)}/uploads/${filename}`;
-    res.json({ url: fileUrl });
+
+    const settings = await getOrCreateCompanySettings();
+
+    // Save old signature URL
+    const oldSignatureUrl = settings.signatureUrl;
+
+    // Save new signature URL
+    settings.signatureUrl = fileUrl;
+    settings.updatedAt = new Date();
+
+    await settings.save();
+
+    // Delete old signature AFTER new one is saved
+    if (oldSignatureUrl && oldSignatureUrl !== fileUrl) {
+      deleteOldUpload(oldSignatureUrl);
+    }
+
+    res.json({
+      url: fileUrl,
+      settings,
+    });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error('Draw Signature Error:', err);
+
+    res.status(500).json({
+      message: err.message,
+    });
   }
 });
-
 router.delete('/invoices/:id', async (req, res) => {
   try {
     await Invoice.findByIdAndDelete(req.params.id);
@@ -369,18 +503,54 @@ router.put('/company-settings', async (req, res) => {
   } catch (err) { res.status(400).json({ message: err.message }); }
 });
 
-router.post('/company-settings/upload-logo', upload.single('logo'), async (req, res) => {
-  try {
-    if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
-    const fileUrl = `${getPublicBaseUrl(req)}/uploads/${req.file.filename}`;
-    const settings = await getOrCreateCompanySettings();
-    settings.logoUrl = fileUrl;
-    settings.updatedAt = new Date();
-    await settings.save();
-    res.json({ url: fileUrl, settings });
-  } catch (err) { res.status(500).json({ message: err.message }); }
-});
+router.post(
+  '/company-settings/upload-logo',
+  upload.single('logo'),
+  async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({
+          message: 'No file uploaded',
+        });
+      }
 
+      const settings = await getOrCreateCompanySettings();
+
+      // Save old logo URL before replacing it
+      const oldLogoUrl = settings.logoUrl;
+
+      // New logo URL
+      const fileUrl = `${getPublicBaseUrl(req)}/uploads/${req.file.filename}`;
+
+      // Save new logo URL in MongoDB
+      settings.logoUrl = fileUrl;
+      settings.updatedAt = new Date();
+
+      await settings.save();
+
+      // Delete old logo AFTER new logo is successfully saved
+      if (oldLogoUrl && oldLogoUrl !== fileUrl) {
+        deleteOldUpload(oldLogoUrl);
+      }
+
+      res.json({
+        url: fileUrl,
+        settings,
+      });
+    } catch (err) {
+      // If database save fails, delete newly uploaded file
+      if (req.file?.path && fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
+
+      console.error('Logo Upload Error:', err);
+
+      res.status(500).json({
+        message: err.message,
+      });
+    }
+  }
+);
 // --- OTHER ROUTES (PROJECTS, LEADS, etc.) ---
 router.get('/projects', async (req, res) => {
   try {

@@ -85,6 +85,7 @@
                     padding: $main-nav-item-padding-y $main-nav-item-padding-x;
                     border-left: 3px solid transparent;
 
+                    // Active parent menu
                     &.active {
                         font-weight: $font-weight-medium;
                         border-left-color: var(--#{$prefix}primary);
@@ -92,8 +93,14 @@
                         .nav-icon {
                             color: var(--#{$prefix}primary);
                         }
+
+                        .menu-arrow {
+                            color: $main-nav-item-hover-color;
+                            opacity: 1;
+                        }
                     }
 
+                    // Parent menu active / hover / focus
                     &.show,
                     &.active,
                     &:active,
@@ -101,10 +108,12 @@
                     &:focus {
                         color: $main-nav-item-hover-color;
                         background-color: $main-nav-item-hover-bg;
-                        background-image: linear-gradient(90deg,
-                                rgba(255, 255, 255, 0.1) 0%,
-                                rgba(246, 246, 246, 0.1) 35%,
-                                $main-nav-bg 100%);
+                        background-image: linear-gradient(
+                            90deg,
+                            rgba(255, 255, 255, 0.1) 0%,
+                            rgba(246, 246, 246, 0.1) 35%,
+                            $main-nav-bg 100%
+                        );
 
                         &::after {
                             color: $main-nav-item-hover-color;
@@ -156,39 +165,73 @@
                     cursor: pointer;
                     padding: calc($main-nav-item-padding-y * 0.5) $main-nav-item-padding-x;
 
-                    .sub-nav-link {
-                        display: flex;
-                        position: relative;
-                        white-space: nowrap;
-                        transition: all 0.3s ease-in-out;
-                        color: $main-nav-item-color;
-                        font-size: calc($main-nav-item-font-size * 0.95);
-                        padding: calc($main-nav-item-padding-y * 0.25) $main-nav-item-padding-x;
+           .sub-nav-link {
+    display: flex;
+    position: relative;
+    align-items: center;
+    white-space: nowrap;
+    transition: all 0.3s ease-in-out;
 
-                        &.active {
-                            font-weight: $font-weight-medium;
-                        }
+    color: $main-nav-item-color;
+    font-size: calc($main-nav-item-font-size * 0.95);
 
-                        &.active,
-                        &:active,
-                        &:hover,
-                        &:focus {
-                            color: $main-nav-item-hover-color;
+    padding: calc($main-nav-item-padding-y * 0.25)
+        $main-nav-item-padding-x;
 
-                            &::before {
-                                background-color: $main-nav-item-hover-color;
-                                opacity: 1;
-                            }
-                        }
+    border-left: 3px solid transparent;
 
-                        &:hover {
-                            transform: translateX(5px);
-                        }
-                    }
+    &.active {
+        color: $main-nav-item-hover-color !important;
+        font-weight: $font-weight-medium !important;
+
+        background-color: $main-nav-item-hover-bg !important;
+
+        background-image: linear-gradient(
+            90deg,
+            rgba(255, 255, 255, 0.1) 0%,
+            rgba(246, 246, 246, 0.1) 35%,
+            $main-nav-bg 100%
+        ) !important;
+
+        /* ORANGE LINE */
+        border-left: 3px solid var(--#{$prefix}primary) !important;
+
+        /* ORANGE ICON */
+        .nav-icon {
+            color: var(--#{$prefix}primary) !important;
+        }
+
+        /* ORANGE ACTIVE INDICATOR */
+        &::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background-color: var(--#{$prefix}primary) !important;
+            opacity: 1 !important;
+            display: block !important;
+        }
+    }
+
+    &:hover {
+        color: $main-nav-item-hover-color;
+
+        transform: translateX(5px);
+    }
+
+    &:focus,
+    &:active {
+        color: $main-nav-item-hover-color;
+    }
+}
                 }
 
                 .sub-navbar-nav {
-                    padding-left: calc($main-nav-width-sm - $main-nav-item-padding-x * 5.25);
+                    padding-left: calc(
+                        $main-nav-width-sm - $main-nav-item-padding-x * 5.25
+                    );
                 }
             }
         }
@@ -199,12 +242,16 @@
         position: relative;
         transition: all 0.3s ease-in-out;
         min-height: calc(100vh - $topbar-height);
-        padding: calc($spacer * 1) calc($spacer * 0.5) $footer-height calc($spacer * 0.5);
+        padding: calc($spacer * 1) calc($spacer * 0.5) $footer-height
+            calc($spacer * 0.5);
         margin-left: $main-nav-width;
     }
 }
 
+// ==========================================================
 // Sidenav Condensed
+// ==========================================================
+
 html[data-menu-size='condensed'] {
     .main-nav {
         position: absolute;
@@ -273,9 +320,8 @@ html[data-menu-size='condensed'] {
                 white-space: nowrap;
 
                 &:hover {
-
-                    >.collapse,
-                    >.collapsing {
+                    > .collapse,
+                    > .collapsing {
                         display: block;
                         left: 100%;
                         margin-top: -1px;
@@ -283,27 +329,32 @@ html[data-menu-size='condensed'] {
                         height: inherit !important;
                         transition: none !important;
 
-                        >.sub-navbar-nav {
+                        > .sub-navbar-nav {
                             padding-left: 0;
                             background: $dropdown-bg;
                             box-shadow: var(--#{$prefix}box-shadow);
-                            width: calc($main-nav-width - $main-nav-width-sm);
+                            width: calc(
+                                $main-nav-width - $main-nav-width-sm
+                            );
                             border: $card-border-width solid $card-border-color;
 
-                            >.sub-nav-item {
+                            > .sub-nav-item {
                                 padding: 0;
 
-                                >.sub-nav-link {
-                                    padding: calc($main-nav-item-padding-y * 0.75) $main-nav-item-padding-x;
+                                > .sub-nav-link {
+                                    padding: calc(
+                                            $main-nav-item-padding-y * 0.75
+                                        )
+                                        $main-nav-item-padding-x;
                                     z-index: 5;
 
-                                    >.nav-text {
+                                    > .nav-text {
                                         display: block;
                                     }
                                 }
 
-                                >.collapse,
-                                >.collapsing {
+                                > .collapse,
+                                > .collapsing {
                                     top: 0;
                                 }
                             }
@@ -330,9 +381,9 @@ html[data-menu-size='condensed'] {
                 }
             }
 
-            >.nav-item {
+            > .nav-item {
                 &:hover {
-                    >.nav-link {
+                    > .nav-link {
                         &::before {
                             content: '';
                             inset: 0px;
@@ -340,7 +391,7 @@ html[data-menu-size='condensed'] {
                             width: $main-nav-width;
                         }
 
-                        >.nav-text {
+                        > .nav-text {
                             display: flex;
                             align-items: center;
                             position: absolute;
@@ -348,8 +399,11 @@ html[data-menu-size='condensed'] {
                             background: $dropdown-bg;
                             color: $dropdown-color;
                             line-height: $main-nav-item-icon-size;
-                            width: calc($main-nav-width - $main-nav-width-sm);
-                            padding: $main-nav-item-padding-y $main-nav-item-padding-x;
+                            width: calc(
+                                $main-nav-width - $main-nav-width-sm
+                            );
+                            padding: $main-nav-item-padding-y
+                                $main-nav-item-padding-x;
                             border: $card-border-width solid $card-border-color;
                             box-shadow: var(--#{$prefix}box-shadow);
                         }
@@ -383,7 +437,10 @@ html[data-menu-size='condensed'] {
     }
 }
 
+// ==========================================================
 // Sidebar sm hover Toggle Menu Button
+// ==========================================================
+
 .button-sm-hover {
     border: 0;
     top: 17px;
@@ -418,7 +475,10 @@ html[data-menu-size='condensed'] {
     }
 }
 
+// ==========================================================
 // Small Hover
+// ==========================================================
+
 html[data-menu-size='sm-hover'] {
     .topbar {
         padding-left: $main-nav-width-sm;
@@ -453,7 +513,7 @@ html[data-menu-size='sm-hover'] {
                 }
 
                 .menu-arrow {
-                        display: none;
+                    display: none;
                 }
             }
 
@@ -500,7 +560,10 @@ html[data-menu-size='sm-hover'] {
     }
 }
 
+// ==========================================================
 // Small Hover Active
+// ==========================================================
+
 html[data-menu-size='sm-hover-active'] {
     .button-toggle-menu {
         display: none;
@@ -522,7 +585,10 @@ html[data-menu-size='sm-hover-active'] {
     }
 }
 
+// ==========================================================
 // SideNav Hidden (Mobile View ≤767)
+// ==========================================================
+
 html[data-menu-size='hidden'] {
     .main-nav {
         margin-left: calc($main-nav-width * -1);
@@ -546,7 +612,10 @@ html[data-menu-size='hidden'] {
     }
 }
 
+// ==========================================================
 // Mobile sidebar backdrop
+// ==========================================================
+
 .sidebar-backdrop {
     display: none;
     position: fixed;
@@ -568,14 +637,20 @@ html.sidebar-enable[data-menu-size='hidden'] .sidebar-backdrop {
     opacity: 1;
 }
 
+// ==========================================================
 // Condensed tablet: avoid huge min-height
+// ==========================================================
+
 html[data-menu-size='condensed'] {
     .page-content {
         min-height: calc(100vh - $topbar-height);
     }
 }
 
+// ==========================================================
 // Sidenav Dark and Brand
+// ==========================================================
+
 html[data-bs-theme='dark'],
 html[data-menu-color='dark'],
 html[data-menu-color='brand'] {
@@ -592,7 +667,7 @@ html[data-menu-color='brand'] {
     }
 }
 
-// RTL
+
 [dir='rtl'] {
     .menu-arrow {
         &::after {
@@ -606,3 +681,5 @@ html[data-menu-color='brand'] {
         }
     }
 }
+
+

@@ -102,6 +102,16 @@ const EditEmployeePage = () => {
           .section-title hr { flex-grow: 1; border-color: rgba(255, 77, 0, 0.2); }
         `}
       </style>
+      <div className="mb-4">
+  <Button
+   variant="link"
+    type="button"
+    onClick={() => navigate('/pages/employees')}
+   className="text-muted p-0 mb-2"
+  >
+   ← Back to Employees
+  </Button>
+</div>
 
       <Row className="justify-content-center">
         <Col xl={10}>

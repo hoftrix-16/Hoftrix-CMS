@@ -61,9 +61,6 @@ interface CalendarEvent {
   }
 }
 
-/* =========================================================
-   COMPONENT
-========================================================= */
 
 const CalendarPage = () => {
   const { user } = useAuthContext()
@@ -90,46 +87,42 @@ const calendarDateRef = useRef<Date>(new Date())
     description: '',
   })
 
-  /* =========================================================
-     FETCH CALENDAR EVENTS
-  ========================================================= */
-
+ 
   const fetchEvents = async () => {
-    setLoading(true)
+  setLoading(true)
 
-    try {
-      const response = await api.get('/erp/calendar-events')
+  try {
+    const response = await api.get('/erp/calendar-events')
 
-      console.log('Calendar events:', response.data)
+    console.log('Calendar events:', response.data)
 
-      if (Array.isArray(response.data)) {
-        setEvents(response.data)
-      } else {
-        setEvents([])
-      }
-    } catch (error) {
-      console.error(
-        'Error fetching calendar events:',
-        error
-      )
+    if (Array.isArray(response.data)) {
+      const filteredEvents = isAdmin
+        ? response.data
+        : response.data.filter(
+            (event: CalendarEvent) =>
+              event.extendedProps?.type !== 'Invoice Due'
+          )
 
-      toast.error('Failed to load calendar events')
-    } finally {
-      setLoading(false)
+      setEvents(filteredEvents)
+    } else {
+      setEvents([])
     }
+  } catch (error) {
+    console.error(
+      'Error fetching calendar events:',
+      error
+    )
+
+    toast.error('Failed to load calendar events')
+  } finally {
+    setLoading(false)
   }
+}
 
-  /* =========================================================
-     INITIAL LOAD
-  ========================================================= */
-
-  useEffect(() => {
-    fetchEvents()
-  }, [])
-
-  /* =========================================================
-     EVENT CLICK
-  ========================================================= */
+useEffect(() => {
+  fetchEvents()
+}, [isAdmin])
 
   const handleEventClick = (info: any) => {
     const clickedEvent: CalendarEvent = {
