@@ -24,7 +24,7 @@ const SettingPage = () => {
   return (
     <div className="min-h-screen bg-slate-50">
       <div className="sticky top-[72px] z-30 bg-white/95 backdrop-blur-sm border-b border-slate-100 shadow-sm">
-        <div className="p-4">
+        <div className="p-sm-4">
           <SettingsNav
             activeTab={activeTab}
             onTabChange={setActiveTab}
@@ -32,7 +32,7 @@ const SettingPage = () => {
         </div>
       </div>
 
-      <div className="p-4">
+      <div className="py-4 p-sm-4">
         {activeTab === "branding" && (
           <InvoiceSettingsPage/>
         )}
