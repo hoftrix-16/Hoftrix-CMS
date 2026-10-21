@@ -5,6 +5,23 @@ import type { CompanySettings } from '@/types/invoice'
 import { resolveCompany } from '@/helpers/invoiceCompany'
 import { formatMoney } from '@/helpers/invoiceCalc'
 
+type InvoicePreviewWithCreatedAt = InvoicePreviewModel & {
+  createdAt?: string | Date | null
+}
+
+const formatInvoiceDate = (value?: string | Date | null) => {
+  if (!value) return '—'
+
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '—'
+
+  return date.toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  })
+}
+
 /** Print the on-screen A4 preview element */
 export async function printInvoiceFromElement(elementId = 'invoice-a4-preview') {
   const el = document.getElementById(elementId)
@@ -210,7 +227,7 @@ export async function downloadInvoicePdf(
 
 /** Fallback HTML print when preview element is not mounted (e.g. list page) */
 export function printInvoiceDocument(
-  inv: InvoicePreviewModel,
+  inv: InvoicePreviewWithCreatedAt,
   companySettings?: CompanySettings | null
 ) {
   const company = resolveCompany(companySettings)
@@ -257,8 +274,9 @@ export function printInvoiceDocument(
           <div class="accent" style="font-size:28px;font-weight:800">INVOICE</div>
           <div style="font-size:12px;margin-top:8px;line-height:1.7">
             <strong>#</strong> ${inv.invoiceNumber}<br/>
-            <strong>Date:</strong> ${inv.invoiceDate ? new Date(inv.invoiceDate).toLocaleDateString() : '—'}<br/>
-            <strong>Due:</strong> ${inv.dueDate ? new Date(inv.dueDate).toLocaleDateString() : '—'}<br/>
+            <strong>Invoice Date:</strong> ${formatInvoiceDate(inv.invoiceDate)}<br/>
+            <strong>Received Date:</strong> ${formatInvoiceDate(inv.createdAt)}<br/>
+            <strong>Due Date:</strong> ${formatInvoiceDate(inv.dueDate)}<br/>
             <strong>Status:</strong> ${inv.status}
           </div>
         </div>
@@ -326,9 +344,10 @@ export function printInvoiceDocument(
   setTimeout(() => w.print(), 500)
 }
 
-export function toPreviewModel(inv: any): InvoicePreviewModel {
+export function toPreviewModel(inv: any): InvoicePreviewWithCreatedAt {
   return {
     invoiceNumber: inv.invoiceNumber || '',
+    createdAt: inv.createdAt ?? null,
     invoiceDate: inv.invoiceDate,
     dueDate: inv.dueDate,
     status: inv.status || 'Draft',
