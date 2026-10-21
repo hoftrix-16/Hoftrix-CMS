@@ -51,6 +51,7 @@ export interface InvoiceRecord {
   billTo?: InvoiceBillTo
   subject?: string
   invoiceDate: string
+  receivingDate?: string
   dueDate?: string
   terms?: string
   notes?: string
