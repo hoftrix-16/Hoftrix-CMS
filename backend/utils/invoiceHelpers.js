@@ -166,35 +166,94 @@ function sanitizeInvoicePayload(body) {
 }
 
 async function getNextInvoiceNumber(Invoice, invoiceDate = new Date()) {
-  const latest = await Invoice.find({
-    invoiceNumber: new RegExp(`^${INVOICE_PREFIX}-\\d{2}-\\d{2}-\\d+$`),
-  })
-    .sort({ createdAt: -1 })
-    .limit(100)
-    .select('invoiceNumber');
+  const date =
+    invoiceDate && !isNaN(new Date(invoiceDate).getTime())
+      ? new Date(invoiceDate)
+      : new Date();
+
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = String(date.getFullYear()).slice(-2);
+  const monthPrefix = `${INVOICE_PREFIX}-${month}-${year}-`;
+
+  // Match only invoices for this specific month and year (e.g. INV-HTF-11-26-001)
+  const escapedPrefix = monthPrefix.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
+  const monthPattern = new RegExp(`^${escapedPrefix}(\\d+)$`);
+
+  const currentMonthInvoices = await Invoice.find({
+    invoiceNumber: monthPattern,
+  }).select('invoiceNumber');
 
   let max = 0;
 
-  latest.forEach((inv) => {
-    const match = String(inv.invoiceNumber || '').match(/-(\d+)$/);
-
+  currentMonthInvoices.forEach((inv) => {
+    const match = String(inv.invoiceNumber || '').match(monthPattern);
     if (match) {
       const num = parseInt(match[1], 10);
-
       if (!Number.isNaN(num) && num > max) {
         max = num;
       }
     }
   });
 
-  const date = new Date(invoiceDate);
-
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const year = String(date.getFullYear()).slice(-2);
-
   const sequence = String(max + 1).padStart(3, '0');
+  return `${monthPrefix}${sequence}`;
+}
 
-  return `${INVOICE_PREFIX}-${month}-${year}-${sequence}`;
+async function autoFixMisnumberedInvoices(Invoice, ActivityLog, Finance) {
+  try {
+    const invoices = await Invoice.find({}).sort({ createdAt: 1, _id: 1 });
+    if (!invoices || invoices.length === 0) return;
+
+    // Group invoices by month-year prefix, e.g. "INV-HTF-11-26"
+    const groups = {};
+    for (const inv of invoices) {
+      const match = String(inv.invoiceNumber || '').match(/^([A-Za-z0-9_-]+-\d{2}-\d{2})-(\d+)$/);
+      if (match) {
+        const prefix = match[1];
+        if (!groups[prefix]) groups[prefix] = [];
+        groups[prefix].push({
+          inv,
+          seq: parseInt(match[2], 10),
+          id: inv._id,
+          num: inv.invoiceNumber,
+        });
+      }
+    }
+
+    for (const [prefix, list] of Object.entries(groups)) {
+      // If the first invoice in a month does not start from 1 (e.g. starts from 005 due to legacy bug)
+      if (list.length > 0 && list[0].seq !== 1) {
+        for (let i = 0; i < list.length; i++) {
+          const expectedSeq = String(i + 1).padStart(3, '0');
+          const expectedNumber = `${prefix}-${expectedSeq}`;
+          const item = list[i];
+          if (item.num !== expectedNumber) {
+            const oldNum = item.num;
+            await Invoice.updateOne(
+              { _id: item.id },
+              { $set: { invoiceNumber: expectedNumber } }
+            );
+
+            if (ActivityLog) {
+              await ActivityLog.updateMany(
+                { description: new RegExp(oldNum, 'i') },
+                { $set: { description: `Invoice #${expectedNumber} created` } }
+              ).catch(() => {});
+            }
+
+            if (Finance) {
+              await Finance.updateMany(
+                { reference: oldNum },
+                { $set: { reference: expectedNumber } }
+              ).catch(() => {});
+            }
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Error auto-fixing misnumbered invoices:', err.stack || err);
+  }
 }
 
 const INR_TO_USD_RATE = 0.012;
@@ -251,5 +310,6 @@ module.exports = {
   computeTotals,
   sanitizeInvoicePayload,
   getNextInvoiceNumber,
+  autoFixMisnumberedInvoices,
   buildInvoiceStats,
 };

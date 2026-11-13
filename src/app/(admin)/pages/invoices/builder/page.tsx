@@ -499,7 +499,9 @@ if (rawPhone && !rawPhone.startsWith('+') && phoneDialCode) {
 
           isNew
             ? api.get(
-                '/erp/invoices/next-number'
+                `/erp/invoices/next-number?date=${encodeURIComponent(
+                  new Date().toISOString().split('T')[0]
+                )}`
               )
             : Promise.resolve(null),
         ])
@@ -1237,9 +1239,28 @@ if (rawPhone && !rawPhone.startsWith('+') && phoneDialCode) {
                             value={
                               values.invoiceDate
                             }
-                            onChange={
-                              handleChange
-                            }
+                            onChange={async (e) => {
+                              handleChange(e)
+                              if (isNew && e.target.value) {
+                                try {
+                                  const res = await api.get(
+                                    `/erp/invoices/next-number?date=${encodeURIComponent(
+                                      e.target.value
+                                    )}`
+                                  )
+                                  if (res?.data?.invoiceNumber) {
+                                    const seq = extractInvoiceSequence(
+                                      res.data.invoiceNumber
+                                    )
+                                    if (seq) {
+                                      setFieldValue('invoiceIdNumber', seq)
+                                    }
+                                  }
+                                } catch {
+                                  // ignore
+                                }
+                              }
+                            }}
                             onBlur={
                               handleBlur
                             }
