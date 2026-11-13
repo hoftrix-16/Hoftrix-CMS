@@ -21,6 +21,7 @@ const {
   applyOverdue,
   sanitizeInvoicePayload,
   getNextInvoiceNumber,
+  autoFixMisnumberedInvoices,
   buildInvoiceStats,
 } = require('../utils/invoiceHelpers');
 const fs = require('fs');
@@ -158,6 +159,9 @@ router.delete('/finance/:id', async (req, res) => {
 // --- INVOICES ---
 router.get('/invoices', async (req, res) => {
   try {
+    // Automatically fix any invoices in a month that didn't start from 001 (e.g. 005 bug)
+    await autoFixMisnumberedInvoices(Invoice, ActivityLog, Finance);
+
     const invoices = await Invoice.find()
       .populate('client', 'companyName contactPerson email phone address')
       .populate('project', 'name')
@@ -170,7 +174,8 @@ router.get('/invoices', async (req, res) => {
 
 router.get('/invoices/next-number', async (req, res) => {
   try {
-    const invoiceNumber = await getNextInvoiceNumber(Invoice);
+    const targetDate = req.query.date ? new Date(req.query.date) : new Date();
+    const invoiceNumber = await getNextInvoiceNumber(Invoice, targetDate);
     res.json({ invoiceNumber });
   } catch (err) { res.status(500).json({ message: err.message }); }
 });
@@ -206,13 +211,22 @@ router.post('/invoices', async (req, res) => {
       });
     }
 
-    // Generate invoice number on backend
-    invoiceData.invoiceNumber = await getNextInvoiceNumber(
-      Invoice,
-      invoiceData.invoiceDate
-        ? new Date(invoiceData.invoiceDate)
-        : new Date()
-    );
+    const invoiceDate = invoiceData.invoiceDate
+      ? new Date(invoiceData.invoiceDate)
+      : new Date();
+
+    // Use user-provided invoiceNumber if unique; otherwise generate the next sequence for the month
+    if (invoiceData.invoiceNumber && typeof invoiceData.invoiceNumber === 'string') {
+      const trimmed = invoiceData.invoiceNumber.trim();
+      const existing = await Invoice.findOne({ invoiceNumber: trimmed });
+      if (existing) {
+        invoiceData.invoiceNumber = await getNextInvoiceNumber(Invoice, invoiceDate);
+      } else {
+        invoiceData.invoiceNumber = trimmed;
+      }
+    } else {
+      invoiceData.invoiceNumber = await getNextInvoiceNumber(Invoice, invoiceDate);
+    }
 
     const newInvoice = new Invoice(invoiceData);
     await newInvoice.save();
@@ -261,11 +275,15 @@ router.put('/invoices/:id', async (req, res) => {
       oldInvoice.invoiceNumber || ''
     ).trim();
 
-    let formattedInvoiceNumber = currentInvoiceNumber;
+    let formattedInvoiceNumber = String(
+      req.body.invoiceNumber || currentInvoiceNumber
+    ).trim();
 
+    if (!formattedInvoiceNumber) {
+      formattedInvoiceNumber = currentInvoiceNumber;
+    }
 
-
-    const oldFormatMatch = currentInvoiceNumber.match(
+    const oldFormatMatch = formattedInvoiceNumber.match(
       /^INV-HTF-(\d+)$/
     );
 
@@ -286,6 +304,19 @@ router.put('/invoices/:id', async (req, res) => {
 
       formattedInvoiceNumber =
         `INV-HTF-${month}-${year}-${sequence}`;
+    }
+
+    // Check uniqueness if invoice number changed
+    if (formattedInvoiceNumber !== currentInvoiceNumber) {
+      const existing = await Invoice.findOne({
+        invoiceNumber: formattedInvoiceNumber,
+        _id: { $ne: req.params.id },
+      });
+      if (existing) {
+        return res.status(400).json({
+          message: `Invoice number ${formattedInvoiceNumber} is already in use`,
+        });
+      }
     }
 
     invoiceData.invoiceNumber = formattedInvoiceNumber;
