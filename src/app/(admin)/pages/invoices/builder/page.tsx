@@ -250,6 +250,9 @@ const [phoneDialCode, setPhoneDialCode] = useState('91')
   const [selectedClientId, setSelectedClientId] =
     useState('')
 
+  const [dupWarning, setDupWarning] =
+    useState('')
+
   const formik = useFormik({
     initialValues: {
       invoiceIdNumber: '',
@@ -270,6 +273,12 @@ const [phoneDialCode, setPhoneDialCode] = useState('91')
     validationSchema,
 
     onSubmit: async (values) => {
+      // Block save if duplicate invoice number warning is active
+      if (dupWarning) {
+        toast.error('Invoice number already exists. Please change the invoice number before saving.')
+        return
+      }
+
       setSaving(true)
 
       const computed =
@@ -305,8 +314,10 @@ if (rawPhone && !rawPhone.startsWith('+') && phoneDialCode) {
 }
 
    
+      const rawSeq = values.invoiceIdNumber.trim()
+      const paddedSeq = rawSeq.padStart(3, '0')
       const fullInvoiceNumber =
-         `${getInvoicePrefix(values.invoiceDate)}${values.invoiceIdNumber.trim()}`
+         `${getInvoicePrefix(values.invoiceDate)}${paddedSeq}`
 
       const payload: any = {
         invoiceNumber: fullInvoiceNumber,
@@ -1148,10 +1159,35 @@ if (rawPhone && !rawPhone.startsWith('+') && phoneDialCode) {
                                   'invoiceIdNumber',
                                   numberOnly
                                 )
+                                // Clear duplicate warning when user types
+                                if (dupWarning) setDupWarning('')
                               }}
-                              onBlur={
-                                handleBlur
-                              }
+                              onBlur={async (e) => {
+                                handleBlur(e)
+                                const seq = e.target.value.trim()
+                                if (!seq) return
+                                const fullNum = `${getInvoicePrefix(values.invoiceDate)}${seq}`
+                                try {
+                                  const res = await api.get('/erp/invoices')
+                                  const list: any[] = Array.isArray(res.data)
+                                    ? res.data
+                                    : (res.data?.invoices || [])
+                                  const existingId = list.find(
+                                    (inv: any) =>
+                                      inv.invoiceNumber === fullNum &&
+                                      inv._id !== id
+                                  )?._id
+                                  if (existingId) {
+                                    setDupWarning(
+                                      `⚠️ ${fullNum} already exists! Please use a different number.`
+                                    )
+                                  } else {
+                                    setDupWarning('')
+                                  }
+                                } catch {
+                                  // ignore check errors
+                                }
+                              }}
                               placeholder="002"
                               className="fw-bold"
                               style={{
@@ -1162,7 +1198,7 @@ if (rawPhone && !rawPhone.startsWith('+') && phoneDialCode) {
                                 background:
                                   'rgba(255, 77, 0, 0.05)',
                                 border:
-                                  '1px solid #FF4D00',
+                                  `1px solid ${dupWarning ? '#dc3545' : '#FF4D00'}`,
                                 borderRadius:
                                   '0 6px 6px 0',
                               }}
@@ -1181,6 +1217,11 @@ if (rawPhone && !rawPhone.startsWith('+') && phoneDialCode) {
                                 }
                               </div>
                             )}
+                          {dupWarning && (
+                            <div className="text-danger small mt-1 fw-semibold">
+                              {dupWarning}
+                            </div>
+                          )}
                         </Form.Group>
                       </Col>
 
