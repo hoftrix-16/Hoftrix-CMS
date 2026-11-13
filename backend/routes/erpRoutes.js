@@ -159,9 +159,6 @@ router.delete('/finance/:id', async (req, res) => {
 // --- INVOICES ---
 router.get('/invoices', async (req, res) => {
   try {
-    // Automatically fix any invoices in a month that didn't start from 001 (e.g. 005 bug)
-    await autoFixMisnumberedInvoices(Invoice, ActivityLog, Finance);
-
     const invoices = await Invoice.find()
       .populate('client', 'companyName contactPerson email phone address')
       .populate('project', 'name')
@@ -304,6 +301,16 @@ router.put('/invoices/:id', async (req, res) => {
 
       formattedInvoiceNumber =
         `INV-HTF-${month}-${year}-${sequence}`;
+    }
+
+    // Normalize: pad the sequence part to 3 digits if it has fewer
+    // e.g. INV-HTF-11-26-1 → INV-HTF-11-26-001
+    const normalizeMatch = formattedInvoiceNumber.match(
+      /^(INV-HTF-\d{2}-\d{2}-)(\d+)$/
+    );
+    if (normalizeMatch) {
+      const paddedSeq = String(parseInt(normalizeMatch[2], 10)).padStart(3, '0');
+      formattedInvoiceNumber = `${normalizeMatch[1]}${paddedSeq}`;
     }
 
     // Check uniqueness if invoice number changed
