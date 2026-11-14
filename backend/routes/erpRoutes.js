@@ -26,40 +26,31 @@ const {
 } = require('../utils/invoiceHelpers');
 const fs = require('fs');
 const { getApiPublicUrl } = require('../utils/urls');
+const {
+  isCloudinaryConfigured,
+  uploadBuffer,
+  uploadBase64,
+  deleteImage,
+} = require('../utils/cloudinary');
 
 const getPublicBaseUrl = (req) => getApiPublicUrl() || `${req.protocol}://${req.get('host')}`;
 
 // --- MULTER SETUP FOR SIGNATURES / LOGOS ---
-
 const uploadsDir = path.join(process.cwd(), 'uploads');
-
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadsDir);
-  },
-
-  filename: (req, file, cb) => {
-    const ext =
-      path.extname(file.originalname).replace(/[^a-zA-Z0-9.]/g, '') || '.png';
-
-    const prefix = file.fieldname === 'logo' ? 'logo-' : 'sig-';
-
-    const timestamp = new Date()
-      .toISOString()
-      .replace(/[:.]/g, '-');
-
-    const random = Math.round(Math.random() * 1e9);
-
-    cb(null, `${prefix}${timestamp}-${random}${ext}`);
-  },
-});
-
+// In-memory multer storage: buffers are held in memory and uploaded directly to Cloudinary
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+  fileFilter: (req, file, cb) => {
+    if (!file.mimetype || !file.mimetype.startsWith('image/')) {
+      return cb(new Error('Only image files are allowed!'), false);
+    }
+    cb(null, true);
+  },
 });
 
 function deleteOldUpload(fileUrl) {
@@ -401,22 +392,40 @@ router.post(
       }
 
       const settings = await getOrCreateCompanySettings();
-
-      // Save old signature URL before replacing it
       const oldSignatureUrl = settings.signatureUrl;
+      const oldSignaturePublicId = settings.signaturePublicId;
 
-      // New signature URL
-      const fileUrl = `${getPublicBaseUrl(req)}/uploads/${req.file.filename}`;
+      let fileUrl = '';
+      let publicId = '';
+
+      if (isCloudinaryConfigured()) {
+        const result = await uploadBuffer(req.file.buffer, {
+          folder: 'hoftrix/branding/signatures',
+        });
+        fileUrl = result.secure_url;
+        publicId = result.public_id;
+      } else {
+        const ext = path.extname(req.file.originalname).replace(/[^a-zA-Z0-9.]/g, '') || '.png';
+        const filename = `sig-${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
+        const filePath = path.join(uploadsDir, filename);
+        fs.writeFileSync(filePath, req.file.buffer);
+        fileUrl = `${getPublicBaseUrl(req)}/uploads/${filename}`;
+      }
 
       // Save new signature URL in MongoDB
       settings.signatureUrl = fileUrl;
+      if (publicId) settings.signaturePublicId = publicId;
       settings.updatedAt = new Date();
 
       await settings.save();
 
       // Delete old signature AFTER new signature is saved
       if (oldSignatureUrl && oldSignatureUrl !== fileUrl) {
-        deleteOldUpload(oldSignatureUrl);
+        if (oldSignaturePublicId || (oldSignatureUrl && oldSignatureUrl.includes('cloudinary.com'))) {
+          deleteImage(oldSignaturePublicId || oldSignatureUrl).catch(() => {});
+        } else {
+          deleteOldUpload(oldSignatureUrl);
+        }
       }
 
       res.json({
@@ -424,15 +433,9 @@ router.post(
         settings,
       });
     } catch (err) {
-      // If database save fails, delete newly uploaded file
-      if (req.file?.path && fs.existsSync(req.file.path)) {
-        fs.unlinkSync(req.file.path);
-      }
-
       console.error('Signature Upload Error:', err);
-
-      res.status(500).json({
-        message: err.message,
+      res.status(err.http_code || 500).json({
+        message: err.message || 'Signature upload failed',
       });
     }
   }
@@ -452,49 +455,55 @@ router.post('/invoices/draw-signature', async (req, res) => {
       });
     }
 
-    const matches = dataUrl.match(
-      /^data:image\/(\w+);base64,(.+)$/
-    );
+    const settings = await getOrCreateCompanySettings();
+    const oldSignatureUrl = settings.signatureUrl;
+    const oldSignaturePublicId = settings.signaturePublicId;
 
-    if (!matches) {
-      return res.status(400).json({
-        message: 'Invalid data URL',
+    let fileUrl = '';
+    let publicId = '';
+
+    if (isCloudinaryConfigured()) {
+      const result = await uploadBase64(dataUrl, {
+        folder: 'hoftrix/branding/signatures',
       });
+      fileUrl = result.secure_url;
+      publicId = result.public_id;
+    } else {
+      const matches = dataUrl.match(
+        /^data:image\/(\w+);base64,(.+)$/
+      );
+
+      if (!matches) {
+        return res.status(400).json({
+          message: 'Invalid data URL',
+        });
+      }
+
+      const ext = matches[1] === 'jpeg' ? 'jpg' : matches[1];
+      const buffer = Buffer.from(matches[2], 'base64');
+      const timestamp = new Date()
+        .toISOString()
+        .replace(/[:.]/g, '-');
+      const random = Math.round(Math.random() * 1e9);
+      const filename = `sig-draw-${timestamp}-${random}.${ext}`;
+      const filepath = path.join(uploadsDir, filename);
+
+      fs.writeFileSync(filepath, buffer);
+      fileUrl = `${getPublicBaseUrl(req)}/uploads/${filename}`;
     }
 
-    const ext = matches[1] === 'jpeg' ? 'jpg' : matches[1];
-
-    const buffer = Buffer.from(matches[2], 'base64');
-
-    const timestamp = new Date()
-      .toISOString()
-      .replace(/[:.]/g, '-');
-
-    const random = Math.round(Math.random() * 1e9);
-
-    const filename = `sig-draw-${timestamp}-${random}.${ext}`;
-
-    const filepath = path.join(uploadsDir, filename);
-
-    // Save new signature file
-    fs.writeFileSync(filepath, buffer);
-
-    const fileUrl = `${getPublicBaseUrl(req)}/uploads/${filename}`;
-
-    const settings = await getOrCreateCompanySettings();
-
-    // Save old signature URL
-    const oldSignatureUrl = settings.signatureUrl;
-
-    // Save new signature URL
     settings.signatureUrl = fileUrl;
+    if (publicId) settings.signaturePublicId = publicId;
     settings.updatedAt = new Date();
 
     await settings.save();
 
-    // Delete old signature AFTER new one is saved
     if (oldSignatureUrl && oldSignatureUrl !== fileUrl) {
-      deleteOldUpload(oldSignatureUrl);
+      if (oldSignaturePublicId || (oldSignatureUrl && oldSignatureUrl.includes('cloudinary.com'))) {
+        deleteImage(oldSignaturePublicId || oldSignatureUrl).catch(() => {});
+      } else {
+        deleteOldUpload(oldSignatureUrl);
+      }
     }
 
     res.json({
@@ -503,9 +512,8 @@ router.post('/invoices/draw-signature', async (req, res) => {
     });
   } catch (err) {
     console.error('Draw Signature Error:', err);
-
-    res.status(500).json({
-      message: err.message,
+    res.status(err.http_code || 500).json({
+      message: err.message || 'Failed to save drawn signature',
     });
   }
 });
@@ -535,7 +543,42 @@ router.get('/company-settings', async (req, res) => {
 router.put('/company-settings', async (req, res) => {
   try {
     const settings = await getOrCreateCompanySettings();
-    Object.assign(settings, req.body, { updatedAt: new Date() });
+    const updateData = { ...req.body };
+
+    // Prevent automatic loss of logoUrl:
+    // If updateData.logoUrl is empty or not provided, PRESERVE existing settings.logoUrl
+    // Unless explicitly requested via updateData.removeLogo === true
+    if (updateData.removeLogo) {
+      if (settings.logoPublicId || settings.logoUrl) {
+        deleteImage(settings.logoPublicId || settings.logoUrl).catch(() => {});
+        deleteOldUpload(settings.logoUrl);
+      }
+      updateData.logoUrl = '';
+      updateData.logoPublicId = '';
+    } else if (!updateData.logoUrl && settings.logoUrl) {
+      delete updateData.logoUrl;
+      delete updateData.logoPublicId;
+    }
+
+    // Prevent automatic loss of signatureUrl:
+    // If updateData.signatureUrl is empty or not provided, PRESERVE existing settings.signatureUrl
+    // Unless explicitly requested via updateData.removeSignature === true
+    if (updateData.removeSignature) {
+      if (settings.signaturePublicId || settings.signatureUrl) {
+        deleteImage(settings.signaturePublicId || settings.signatureUrl).catch(() => {});
+        deleteOldUpload(settings.signatureUrl);
+      }
+      updateData.signatureUrl = '';
+      updateData.signaturePublicId = '';
+    } else if (!updateData.signatureUrl && settings.signatureUrl) {
+      delete updateData.signatureUrl;
+      delete updateData.signaturePublicId;
+    }
+
+    delete updateData.removeLogo;
+    delete updateData.removeSignature;
+
+    Object.assign(settings, updateData, { updatedAt: new Date() });
     await settings.save();
     res.json(settings);
   } catch (err) { res.status(400).json({ message: err.message }); }
@@ -553,22 +596,40 @@ router.post(
       }
 
       const settings = await getOrCreateCompanySettings();
-
-      // Save old logo URL before replacing it
       const oldLogoUrl = settings.logoUrl;
+      const oldLogoPublicId = settings.logoPublicId;
 
-      // New logo URL
-      const fileUrl = `${getPublicBaseUrl(req)}/uploads/${req.file.filename}`;
+      let fileUrl = '';
+      let publicId = '';
+
+      if (isCloudinaryConfigured()) {
+        const result = await uploadBuffer(req.file.buffer, {
+          folder: 'hoftrix/branding/logos',
+        });
+        fileUrl = result.secure_url;
+        publicId = result.public_id;
+      } else {
+        const ext = path.extname(req.file.originalname).replace(/[^a-zA-Z0-9.]/g, '') || '.png';
+        const filename = `logo-${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
+        const filePath = path.join(uploadsDir, filename);
+        fs.writeFileSync(filePath, req.file.buffer);
+        fileUrl = `${getPublicBaseUrl(req)}/uploads/${filename}`;
+      }
 
       // Save new logo URL in MongoDB
       settings.logoUrl = fileUrl;
+      if (publicId) settings.logoPublicId = publicId;
       settings.updatedAt = new Date();
 
       await settings.save();
 
       // Delete old logo AFTER new logo is successfully saved
       if (oldLogoUrl && oldLogoUrl !== fileUrl) {
-        deleteOldUpload(oldLogoUrl);
+        if (oldLogoPublicId || (oldLogoUrl && oldLogoUrl.includes('cloudinary.com'))) {
+          deleteImage(oldLogoPublicId || oldLogoUrl).catch(() => {});
+        } else {
+          deleteOldUpload(oldLogoUrl);
+        }
       }
 
       res.json({
@@ -576,15 +637,9 @@ router.post(
         settings,
       });
     } catch (err) {
-      // If database save fails, delete newly uploaded file
-      if (req.file?.path && fs.existsSync(req.file.path)) {
-        fs.unlinkSync(req.file.path);
-      }
-
       console.error('Logo Upload Error:', err);
-
-      res.status(500).json({
-        message: err.message,
+      res.status(err.http_code || 500).json({
+        message: err.message || 'Logo upload failed',
       });
     }
   }

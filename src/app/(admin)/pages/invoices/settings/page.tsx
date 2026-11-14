@@ -9,6 +9,8 @@ import { DEFAULT_NOTES, DEFAULT_TERMS } from '@/types/invoice'
 const InvoiceSettingsPage = () => {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [uploadingLogo, setUploadingLogo] = useState(false)
+  const [uploadingSig, setUploadingSig] = useState(false)
   const [drawing, setDrawing] = useState(false)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const drawingRef = useRef(false)
@@ -47,33 +49,77 @@ const InvoiceSettingsPage = () => {
   const persistSettings = async (patch: Partial<CompanySettings>) => {
     const next = { ...form, ...patch }
     const res = await api.put('/erp/company-settings', next)
-    setForm(res.data)
+    setForm((prev) => ({ ...prev, ...res.data }))
     return res.data
   }
 
   const handleLogo = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files?.[0]) return
+    const file = e.target.files[0]
     const data = new FormData()
-    data.append('logo', e.target.files[0])
+    data.append('logo', file)
+    setUploadingLogo(true)
     try {
       const res = await api.post('/erp/company-settings/upload-logo', data)
-      setForm({ ...form, logoUrl: res.data.url, ...(res.data.settings || {}) })
-      toast.success('Logo saved to company settings')
+      setForm((prev) => ({
+        ...prev,
+        logoUrl: res.data.url,
+        ...(res.data.settings || {})
+      }))
+      toast.success('Logo uploaded to Cloudinary successfully!')
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Logo upload failed')
+    } finally {
+      setUploadingLogo(false)
+      e.target.value = ''
+    }
+  }
+
+  const handleRemoveLogo = async () => {
+    try {
+      setSaving(true)
+      const res = await api.put('/erp/company-settings', { removeLogo: true })
+      setForm((prev) => ({ ...prev, logoUrl: '', ...(res.data || {}) }))
+      toast.success('Logo removed')
     } catch {
-      toast.error('Logo upload failed')
+      toast.error('Failed to remove logo')
+    } finally {
+      setSaving(false)
     }
   }
 
   const handleSignatureUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files?.[0]) return
+    const file = e.target.files[0]
     const data = new FormData()
-    data.append('signature', e.target.files[0])
+    data.append('signature', file)
+    setUploadingSig(true)
     try {
       const res = await api.post('/erp/invoices/upload-signature', data)
-      await persistSettings({ signatureUrl: res.data.url })
-      toast.success('Signature saved permanently')
+      setForm((prev) => ({
+        ...prev,
+        signatureUrl: res.data.url,
+        ...(res.data.settings || {})
+      }))
+      toast.success('Signature uploaded and saved permanently!')
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Signature upload failed')
+    } finally {
+      setUploadingSig(false)
+      e.target.value = ''
+    }
+  }
+
+  const handleRemoveSignature = async () => {
+    try {
+      setSaving(true)
+      const res = await api.put('/erp/company-settings', { removeSignature: true })
+      setForm((prev) => ({ ...prev, signatureUrl: '', ...(res.data || {}) }))
+      toast.success('Signature removed')
     } catch {
-      toast.error('Signature upload failed')
+      toast.error('Failed to remove signature')
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -105,14 +151,21 @@ const InvoiceSettingsPage = () => {
   const saveDrawnSignature = async () => {
     const canvas = canvasRef.current
     if (!canvas) return
+    setUploadingSig(true)
     try {
       const dataUrl = canvas.toDataURL('image/png')
       const res = await api.post('/erp/invoices/draw-signature', { dataUrl })
-      await persistSettings({ signatureUrl: res.data.url })
+      setForm((prev) => ({
+        ...prev,
+        signatureUrl: res.data.url,
+        ...(res.data.settings || {})
+      }))
       setDrawing(false)
-      toast.success('Signature saved permanently')
-    } catch {
-      toast.error('Could not save signature')
+      toast.success('Signature saved permanently!')
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Could not save signature')
+    } finally {
+      setUploadingSig(false)
     }
   }
 
@@ -213,20 +266,48 @@ const InvoiceSettingsPage = () => {
             <Row>
               <Col md={6}>
                 <Form.Group className="mb-3">
-                  <Form.Label className="small text-muted">Company Logo</Form.Label>
-                  <Form.Control type="file" accept="image/*" onChange={handleLogo} />
+                  <Form.Label className="small text-muted d-flex justify-content-between align-items-center">
+                    <span>Company Logo</span>
+                    {uploadingLogo && (
+                      <span className="text-warning small">
+                        <Spinner animation="border" size="sm" className="me-1" />
+                        Uploading to Cloudinary...
+                      </span>
+                    )}
+                  </Form.Label>
+                  <Form.Control type="file" accept="image/*" onChange={handleLogo} disabled={uploadingLogo} />
                   {form.logoUrl && (
-                    <img src={form.logoUrl} alt="Logo" style={{ height: 56, marginTop: 10, objectFit: 'contain' }} />
+                    <div className="d-flex align-items-center gap-3 mt-2">
+                      <img src={form.logoUrl} alt="Logo" style={{ maxHeight: 56, maxWidth: 180, objectFit: 'contain', background: '#fff', padding: 4, borderRadius: 6 }} />
+                      <Button size="sm" variant="outline-danger" type="button" onClick={handleRemoveLogo} disabled={saving || uploadingLogo}>
+                        Remove Logo
+                      </Button>
+                    </div>
                   )}
                 </Form.Group>
               </Col>
               <Col md={6}>
                 <Form.Group className="mb-3">
-                  <Form.Label className="small text-muted">Upload Signature</Form.Label>
-                  <Form.Control type="file" accept="image/*" onChange={handleSignatureUpload} />
-                  <Button size="sm" variant="outline-primary" className="mt-2" type="button" onClick={() => setDrawing((v) => !v)}>
-                    {drawing ? 'Hide Draw Pad' : 'Draw Signature'}
-                  </Button>
+                  <Form.Label className="small text-muted d-flex justify-content-between align-items-center">
+                    <span>Upload Signature</span>
+                    {uploadingSig && (
+                      <span className="text-warning small">
+                        <Spinner animation="border" size="sm" className="me-1" />
+                        Uploading to Cloudinary...
+                      </span>
+                    )}
+                  </Form.Label>
+                  <Form.Control type="file" accept="image/*" onChange={handleSignatureUpload} disabled={uploadingSig} />
+                  <div className="d-flex gap-2 mt-2">
+                    <Button size="sm" variant="outline-primary" type="button" onClick={() => setDrawing((v) => !v)}>
+                      {drawing ? 'Hide Draw Pad' : 'Draw Signature'}
+                    </Button>
+                    {form.signatureUrl && (
+                      <Button size="sm" variant="outline-danger" type="button" onClick={handleRemoveSignature} disabled={saving || uploadingSig}>
+                        Remove Signature
+                      </Button>
+                    )}
+                  </div>
                   {form.signatureUrl && (
                     <div className="mt-2">
                       <img src={form.signatureUrl} alt="Signature" style={{ maxHeight: 56, maxWidth: 180, objectFit: 'contain', background: '#fff', padding: 4, borderRadius: 6 }} />
