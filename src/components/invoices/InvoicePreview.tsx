@@ -46,7 +46,10 @@ const InvoicePreview = ({
     invoice as InvoicePreviewModel & { createdAt?: string | Date | null }
   ).createdAt
 
-  const actualReceivedDate = receivedDate ?? createdAtFallback
+  const actualReceivedDate =
+    invoice.status === 'Paid'
+      ? (receivedDate ?? invoice.receivingDate ?? createdAtFallback)
+      : null
 
   const cellStyle: React.CSSProperties = {
     padding: '12px 6px',
@@ -165,10 +168,12 @@ const InvoicePreview = ({
               <strong>Invoice Date:</strong>{' '}
               {formatDate(invoice.invoiceDate)}
             </div>
-            <div>
-              <strong>Received Date:</strong>{' '}
-              {formatDate(actualReceivedDate)}
-            </div>
+            {invoice.status === 'Paid' && actualReceivedDate && (
+              <div>
+                <strong>Received Date:</strong>{' '}
+                {formatDate(actualReceivedDate)}
+              </div>
+            )}
             <div>
               <strong>Due Date:</strong> {formatDate(invoice.dueDate)}
             </div>

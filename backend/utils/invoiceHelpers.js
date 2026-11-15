@@ -147,6 +147,13 @@ function sanitizeInvoicePayload(body) {
   if (data.status === 'Paid') {
     data.amountPaid = data.totalAmount || 0;
     data.balanceDue = 0;
+    if (data.receivingDate) {
+      data.receivingDate = new Date(data.receivingDate);
+    } else {
+      data.receivingDate = new Date();
+    }
+  } else {
+    data.receivingDate = null;
   }
 
   if (!data.customClientName && data.billTo?.companyName) {

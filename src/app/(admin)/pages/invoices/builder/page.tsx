@@ -112,6 +112,8 @@ const validationSchema = Yup.object().shape({
       'Due date cannot be before invoice date'
     ),
 
+  receivingDate: Yup.date().nullable(),
+
   status: Yup.string().required('Status is required'),
 
   currency: Yup.string()
@@ -259,6 +261,7 @@ const [phoneDialCode, setPhoneDialCode] = useState('91')
       subject: '',
       invoiceDate:
         new Date().toISOString().split('T')[0],
+      receivingDate: '',
       dueDate: '',
       status: 'Draft' as InvoiceStatus,
       currency: 'INR' as 'USD' | 'INR',
@@ -337,6 +340,11 @@ if (rawPhone && !rawPhone.startsWith('+') && phoneDialCode) {
 
         invoiceDate:
           values.invoiceDate,
+
+        receivingDate:
+          values.status === 'Paid'
+            ? (values.receivingDate || new Date().toISOString().split('T')[0])
+            : null,
 
         dueDate:
           values.dueDate || undefined,
@@ -643,6 +651,17 @@ if (rawPhone && !rawPhone.startsWith('+') && phoneDialCode) {
                       .split('T')[0]
                   : '',
 
+              receivingDate:
+                inv.status === 'Paid' && inv.receivingDate
+                  ? new Date(
+                      inv.receivingDate
+                    )
+                      .toISOString()
+                      .split('T')[0]
+                  : inv.status === 'Paid'
+                    ? new Date().toISOString().split('T')[0]
+                    : '',
+
               status:
                 (inv.status === 'Unpaid'
                   ? 'Pending'
@@ -820,6 +839,11 @@ if (rawPhone && !rawPhone.startsWith('+') && phoneDialCode) {
 
     dueDate:
       values.dueDate,
+
+    receivingDate:
+      values.status === 'Paid'
+        ? (values.receivingDate || new Date().toISOString().split('T')[0])
+        : null,
 
     status:
       values.status,
@@ -1238,9 +1262,20 @@ if (rawPhone && !rawPhone.startsWith('+') && phoneDialCode) {
                             value={
                               values.status
                             }
-                            onChange={
-                              handleChange
-                            }
+                            onChange={(e) => {
+                              const newStatus = e.target.value as InvoiceStatus
+                              setFieldValue('status', newStatus)
+                              if (newStatus === 'Paid') {
+                                if (!values.receivingDate) {
+                                  setFieldValue(
+                                    'receivingDate',
+                                    new Date().toISOString().split('T')[0]
+                                  )
+                                }
+                              } else {
+                                setFieldValue('receivingDate', '')
+                              }
+                            }}
                             onBlur={
                               handleBlur
                             }
@@ -1268,7 +1303,7 @@ if (rawPhone && !rawPhone.startsWith('+') && phoneDialCode) {
 
                       {/* Invoice Date */}
 
-                      <Col md={4}>
+                      <Col md={values.status === 'Paid' ? 3 : 4}>
                         <Form.Group className="mb-3">
                           <Form.Label className="small fw-bold text-uppercase text-muted">
                             Invoice Date *
@@ -1321,7 +1356,7 @@ if (rawPhone && !rawPhone.startsWith('+') && phoneDialCode) {
 
                       {/* Due Date */}
 
-                      <Col md={4}>
+                      <Col md={values.status === 'Paid' ? 3 : 4}>
                         <Form.Group className="mb-3">
                           <Form.Label className="small fw-bold text-uppercase text-muted">
                             Due Date
@@ -1353,9 +1388,29 @@ if (rawPhone && !rawPhone.startsWith('+') && phoneDialCode) {
                         </Form.Group>
                       </Col>
 
+                      {/* Received Date (Only when Paid) */}
+                      {values.status === 'Paid' && (
+                        <Col md={3}>
+                          <Form.Group className="mb-3">
+                            <Form.Label className="small fw-bold text-uppercase text-success d-flex align-items-center gap-1">
+                              <IconifyIcon icon="bx:check-circle" />
+                              Received Date *
+                            </Form.Label>
+
+                            <Form.Control
+                              type="date"
+                              name="receivingDate"
+                              value={values.receivingDate}
+                              onChange={handleChange}
+                              onBlur={handleBlur}
+                            />
+                          </Form.Group>
+                        </Col>
+                      )}
+
                       {/* Currency */}
 
-                      <Col md={4}>
+                      <Col md={values.status === 'Paid' ? 3 : 4}>
                         <Form.Group className="mb-3">
                           <Form.Label className="small fw-bold text-uppercase text-muted">
                             Currency

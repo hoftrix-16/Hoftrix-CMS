@@ -36,9 +36,13 @@ function uploadBuffer(buffer, options = {}) {
       },
       (error, result) => {
         if (error) {
-          if (error.http_code === 403 && error.message && error.message.includes('missing permissions')) {
+          if (
+            error.http_code === 403 ||
+            (error.message && error.message.includes('403')) ||
+            (error.message && error.message.includes('missing permissions'))
+          ) {
             const friendlyErr = new Error(
-              'Cloudinary API Key is missing "Create/Upload" permission. In Cloudinary Console, go to Settings > Access Keys, edit your API key and enable "Create" permission, or use the Master API Key.'
+              'Cloudinary API Key is missing "Create/Upload" permission (403 Forbidden). In Cloudinary Console, go to Settings > Access Keys, edit your API key and enable "Create" permission, or copy the Master API Key from the Dashboard.'
             );
             friendlyErr.http_code = 403;
             friendlyErr.originalError = error;
@@ -70,9 +74,13 @@ async function uploadBase64(base64Data, options = {}) {
     });
     return result;
   } catch (error) {
-    if (error.http_code === 403 && error.message && error.message.includes('missing permissions')) {
+    if (
+      error.http_code === 403 ||
+      (error.message && error.message.includes('403')) ||
+      (error.message && error.message.includes('missing permissions'))
+    ) {
       const friendlyErr = new Error(
-        'Cloudinary API Key is missing "Create/Upload" permission. In Cloudinary Console, go to Settings > Access Keys, edit your API key and enable "Create" permission, or use the Master API Key.'
+        'Cloudinary API Key is missing "Create/Upload" permission (403 Forbidden). In Cloudinary Console, go to Settings > Access Keys, edit your API key and enable "Create" permission, or copy the Master API Key from the Dashboard.'
       );
       friendlyErr.http_code = 403;
       friendlyErr.originalError = error;

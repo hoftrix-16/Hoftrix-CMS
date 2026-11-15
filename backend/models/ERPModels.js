@@ -124,6 +124,7 @@ const InvoiceSchema = new mongoose.Schema({
   project: { type: mongoose.Schema.Types.ObjectId, ref: 'Project' },
   subject: { type: String },
   invoiceDate: { type: Date, default: Date.now },
+  receivingDate: { type: Date, default: null },
   dueDate: { type: Date },
   terms: { type: String, default: DEFAULT_INVOICE_TERMS },
   notes: { type: String, default: DEFAULT_INVOICE_NOTES },

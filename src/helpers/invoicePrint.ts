@@ -275,7 +275,11 @@ export function printInvoiceDocument(
           <div style="font-size:12px;margin-top:8px;line-height:1.7">
             <strong>#</strong> ${inv.invoiceNumber}<br/>
             <strong>Invoice Date:</strong> ${formatInvoiceDate(inv.invoiceDate)}<br/>
-            <strong>Received Date:</strong> ${formatInvoiceDate(inv.createdAt)}<br/>
+            ${
+              inv.status === 'Paid' && (inv.receivingDate || inv.createdAt)
+                ? `<strong>Received Date:</strong> ${formatInvoiceDate(inv.receivingDate || inv.createdAt)}<br/>`
+                : ''
+            }
             <strong>Due Date:</strong> ${formatInvoiceDate(inv.dueDate)}<br/>
             <strong>Status:</strong> ${inv.status}
           </div>
@@ -349,6 +353,10 @@ export function toPreviewModel(inv: any): InvoicePreviewWithCreatedAt {
     invoiceNumber: inv.invoiceNumber || '',
     createdAt: inv.createdAt ?? null,
     invoiceDate: inv.invoiceDate,
+    receivingDate:
+      inv.status === 'Paid'
+        ? (inv.receivingDate || inv.createdAt || null)
+        : null,
     dueDate: inv.dueDate,
     status: inv.status || 'Draft',
     currency: inv.currency || 'INR',

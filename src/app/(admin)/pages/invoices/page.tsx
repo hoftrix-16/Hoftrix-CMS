@@ -328,11 +328,14 @@ const InvoicesPage = () => {
                         </td>
 
                         <td className="text-muted small">
-                          {formatDate(
-                            (inv as InvoiceRecord & {
-                              createdAt?: string | Date
-                            }).createdAt,
-                          )}
+                          {inv.status === 'Paid'
+                            ? formatDate(
+                                inv.receivingDate ||
+                                  (inv as InvoiceRecord & {
+                                    createdAt?: string | Date
+                                  }).createdAt
+                              )
+                            : '—'}
                         </td>
 
                         <td className="fw-bold">
@@ -467,11 +470,14 @@ const InvoicesPage = () => {
 
                       <div>
                         <span className="label">Received Date</span>
-                        {formatDate(
-                          (inv as InvoiceRecord & {
-                            createdAt?: string | Date
-                          }).createdAt,
-                        )}
+                        {inv.status === 'Paid'
+                          ? formatDate(
+                              inv.receivingDate ||
+                                (inv as InvoiceRecord & {
+                                  createdAt?: string | Date
+                                }).createdAt
+                            )
+                          : '—'}
                       </div>
                     </div>
 
@@ -546,11 +552,9 @@ const InvoicesPage = () => {
               } as any
             }
             receivedDate={
-              (
-                pdfTarget as InvoiceRecord & {
-                  createdAt?: string | Date
-                }
-              ).createdAt
+              pdfTarget?.status === 'Paid'
+                ? (pdfTarget.receivingDate || (pdfTarget as any).createdAt)
+                : null
             }
             companySettings={companySettings}
             scaled={false}

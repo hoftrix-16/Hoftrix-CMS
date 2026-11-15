@@ -253,6 +253,14 @@ router.put('/invoices/:id', async (req, res) => {
       invoiceData.client = null;
     }
 
+    if (invoiceData.status === 'Paid') {
+      if (!req.body.receivingDate && oldInvoice.receivingDate) {
+        invoiceData.receivingDate = oldInvoice.receivingDate;
+      }
+    } else {
+      invoiceData.receivingDate = null;
+    }
+
     const invoiceDate = invoiceData.invoiceDate
       ? new Date(invoiceData.invoiceDate)
       : oldInvoice.invoiceDate ||
