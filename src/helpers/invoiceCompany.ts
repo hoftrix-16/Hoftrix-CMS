@@ -4,6 +4,7 @@ import { COMPANY } from '@/config/app'
 export interface InvoicePreviewModel {
   invoiceNumber: string
   invoiceDate?: string
+  receivingDate?: string | Date | null
   dueDate?: string
   status: string
   currency: 'USD' | 'INR'
